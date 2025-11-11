@@ -371,79 +371,148 @@ const ReportTimelineCalculator = () => {
           <p className="text-slate-600">Calculate your complete schedule accounting for deadlines, milestones, and working-day rules</p>
         </div>
 
-        <Card className="shadow">
-          <CardHeader className="bg-gradient-to-r from-blue-600 to-blue-700 text-white">
-            <CardTitle className="flex items-center gap-2"><Calendar className="w-5 h-5" /> Project Overview</CardTitle>
+        <Card className="shadow rounded-lg overflow-hidden">
+          <CardHeader className="bg-gradient-to-r from-blue-600 to-blue-700 text-white p-3">
+            <CardTitle className="flex items-center gap-2 text-base"><Calendar className="w-5 h-5" /> Project Overview</CardTitle>
           </CardHeader>
-          <CardContent>
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-              <div>
-                <Label>Project Title *</Label>
-                <Input className={`mt-1 ${requiredClass(projectName)}`} value={projectName} onChange={e => setProjectName(e.target.value)} placeholder="Enter project title" />
-              </div>
+          <CardContent className="p-6">
+            <div className="space-y-6">
+              {/* Basic Information */}
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                <div className="space-y-2">
+                  <Label className="text-sm font-medium text-slate-700">
+                    Project Title <span className="text-red-500">*</span>
+                  </Label>
+                  <Input
+                    className={`transition-all duration-200 ${requiredClass(projectName)} focus:ring-2 focus:ring-blue-500`}
+                    value={projectName}
+                    onChange={e => setProjectName(e.target.value)}
+                    placeholder="Enter project title"
+                  />
+                </div>
 
-              <div>
-                <Label>Type of Report</Label>
-                <Select value={reportType} onValueChange={(v) => setReportType(v)}>
-                  <SelectTrigger className="mt-1">
-                    <SelectValue placeholder="Select report type" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="Annual Report">Annual Report</SelectItem>
-                    <SelectItem value="Sustainability Report">Sustainability Report</SelectItem>
-                    <SelectItem value="Integrated Report">Integrated Report</SelectItem>
-                    <SelectItem value="Stakeholder Report">Stakeholder Report</SelectItem>
-                    <SelectItem value="Internal Publication">Internal Publication</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
+                <div className="space-y-2">
+                  <Label className="text-sm font-medium text-slate-700">Type of Report</Label>
+                  <Select value={reportType} onValueChange={(v) => setReportType(v)}>
+                    <SelectTrigger className="transition-all duration-200 focus:ring-2 focus:ring-blue-500">
+                      <SelectValue placeholder="Select report type" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="Annual Report">Annual Report</SelectItem>
+                      <SelectItem value="Sustainability Report">Sustainability Report</SelectItem>
+                      <SelectItem value="Integrated Report">Integrated Report</SelectItem>
+                      <SelectItem value="Stakeholder Report">Stakeholder Report</SelectItem>
+                      <SelectItem value="Internal Publication">Internal Publication</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
 
-              <div>
-                <Label>Timestamp</Label>
-                <Input className="mt-1" value={timestamp ? new Date(timestamp).toLocaleString() : ''} readOnly />
-              </div>
-            </div>
-
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4">
-              <div>
-                <Label>Scheduling Method</Label>
-                <div className="flex gap-4 mt-2">
-                  <label className="flex items-center gap-2 cursor-pointer">
-                    <input type="radio" checked={schedulingMode === 'backward'} onChange={() => setSchedulingMode('backward')} />
-                    <span>Backward Scheduling (from final delivery)</span>
-                  </label>
-                  <label className="flex items-center gap-2 cursor-pointer">
-                    <input type="radio" checked={schedulingMode === 'forward'} onChange={() => setSchedulingMode('forward')} />
-                    <span>Forward Scheduling (from start)</span>
-                  </label>
+                <div className="space-y-2">
+                  <Label className="text-sm font-medium text-slate-700">Timestamp</Label>
+                  <Input
+                    className="bg-slate-50 text-slate-600"
+                    value={timestamp ? new Date(timestamp).toLocaleString() : ''}
+                    readOnly
+                  />
                 </div>
               </div>
 
-              <div>
-                <Label>{schedulingMode === 'backward' ? 'Final Delivery Date *' : 'Project Start Date *'}</Label>
-                <Input className={`mt-1 ${requiredClass(schedulingMode === 'backward' ? finalDate : startDate)}`} type="date" value={schedulingMode === 'backward' ? finalDate : startDate} onChange={e => schedulingMode === 'backward' ? setFinalDate(e.target.value) : setStartDate(e.target.value)} />
-              </div>
-            </div>
+              {/* Scheduling Method */}
+              <div className="border-t pt-6">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  <div className="space-y-3">
+                    <Label className="text-sm font-medium text-slate-700">Scheduling Method</Label>
+                    <div className="flex flex-col gap-3 p-4 bg-slate-50 rounded-lg">
+                      <label className="flex items-center gap-3 cursor-pointer hover:bg-white p-2 rounded transition-colors">
+                        <input
+                          type="radio"
+                          checked={schedulingMode === 'backward'}
+                          onChange={() => setSchedulingMode('backward')}
+                          className="w-4 h-4 text-blue-600 focus:ring-2 focus:ring-blue-500"
+                        />
+                        <span className="text-sm text-slate-700">Backward Scheduling (from final delivery)</span>
+                      </label>
+                      <label className="flex items-center gap-3 cursor-pointer hover:bg-white p-2 rounded transition-colors">
+                        <input
+                          type="radio"
+                          checked={schedulingMode === 'forward'}
+                          onChange={() => setSchedulingMode('forward')}
+                          className="w-4 h-4 text-blue-600 focus:ring-2 focus:ring-blue-500"
+                        />
+                        <span className="text-sm text-slate-700">Forward Scheduling (from start)</span>
+                      </label>
+                    </div>
+                  </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mt-4">
-              <div className="flex items-center gap-2">
-                <Checkbox checked={includeWeekends} onCheckedChange={setIncludeWeekends} id="inclWeekends" />
-                <Label htmlFor="inclWeekends">Include weekends in calculations</Label>
+                  <div className="space-y-2">
+                    <Label className="text-sm font-medium text-slate-700">
+                      {schedulingMode === 'backward' ? 'Final Delivery Date' : 'Project Start Date'} <span className="text-red-500">*</span>
+                    </Label>
+                    <Input
+                      className={`transition-all duration-200 ${requiredClass(schedulingMode === 'backward' ? finalDate : startDate)} focus:ring-2 focus:ring-blue-500`}
+                      type="date"
+                      value={schedulingMode === 'backward' ? finalDate : startDate}
+                      onChange={e => schedulingMode === 'backward' ? setFinalDate(e.target.value) : setStartDate(e.target.value)}
+                    />
+                  </div>
+                </div>
               </div>
 
-              <div>
-                <Label>Holidays (YYYY-MM-DD, comma separated)</Label>
-                <Input className="mt-1" value={holidays} onChange={e => setHolidays(e.target.value)} placeholder="2025-12-25,2025-12-26" />
-              </div>
+              {/* Advanced Settings */}
+              <div className="border-t pt-6">
+                <h4 className="text-sm font-semibold text-slate-700 mb-4">Advanced Settings</h4>
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+                  <div className="space-y-2">
+                    <div className="flex items-center gap-3 p-3 bg-slate-50 rounded-lg hover:bg-slate-100 transition-colors">
+                      <Checkbox
+                        checked={includeWeekends}
+                        onCheckedChange={setIncludeWeekends}
+                        id="inclWeekends"
+                        className="data-[state=checked]:bg-blue-600"
+                      />
+                      <Label htmlFor="inclWeekends" className="text-sm text-slate-700 cursor-pointer">
+                        Include weekends in calculations
+                      </Label>
+                    </div>
+                  </div>
 
-              <div>
-                <Label>Statutory Days (after production)</Label>
-                <Input type="number" value={statutory} onChange={e => setStatutory(parseInt(e.target.value) || 0)} className="mt-1" min={0} />
-              </div>
+                  <div className="space-y-2">
+                    <Label className="text-sm font-medium text-slate-700">Holidays (YYYY-MM-DD)</Label>
+                    <Input
+                      className="transition-all duration-200 focus:ring-2 focus:ring-blue-500"
+                      value={holidays}
+                      onChange={e => setHolidays(e.target.value)}
+                      placeholder="2025-12-25,2025-12-26"
+                    />
+                    <p className="text-xs text-slate-500">Comma separated</p>
+                  </div>
 
-              <div>
-                <Label>Global Goodwill Buffer (Days)</Label>
-                <Input type="number" value={globalGoodwill} onChange={e => setGlobalGoodwill(parseInt(e.target.value) || 0)} className="mt-1" min={0} />
+                  <div className="space-y-2">
+                    <Label className="text-sm font-medium text-slate-700">Statutory Days</Label>
+                    <Input
+                      type="number"
+                      value={statutory}
+                      onChange={e => setStatutory(parseInt(e.target.value) || 0)}
+                      className="transition-all duration-200 focus:ring-2 focus:ring-blue-500"
+                      min={0}
+                      placeholder="0"
+                    />
+                    <p className="text-xs text-slate-500">After production</p>
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label className="text-sm font-medium text-slate-700">Global Goodwill Buffer</Label>
+                    <Input
+                      type="number"
+                      value={globalGoodwill}
+                      onChange={e => setGlobalGoodwill(parseInt(e.target.value) || 0)}
+                      className="transition-all duration-200 focus:ring-2 focus:ring-blue-500"
+                      min={0}
+                      placeholder="0"
+                    />
+                    <p className="text-xs text-slate-500">Days</p>
+                  </div>
+                </div>
               </div>
             </div>
           </CardContent>
@@ -458,225 +527,469 @@ const ReportTimelineCalculator = () => {
           </Alert>
         )}
 
-        <Card className="shadow">
-          <CardHeader className="bg-gradient-to-r from-purple-600 to-purple-700 text-white cursor-pointer" onClick={() => toggleSection('editorial')}>
-            <CardTitle className="flex items-center justify-between">
+        <Card className="shadow rounded-lg overflow-hidden">
+          <CardHeader className="bg-gradient-to-r from-purple-600 to-purple-700 text-white cursor-pointer p-3" onClick={() => toggleSection('editorial')}>
+            <CardTitle className="flex items-center justify-between text-base">
               <span>Editorial & Content Development</span>
               {expandedSections.editorial ? <ChevronUp /> : <ChevronDown />}
             </CardTitle>
           </CardHeader>
           {expandedSections.editorial && (
-            <CardContent>
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                <div>
-                  <Label>Data Collection and Interviews (Days)</Label>
-                  <Input type="number" value={editorial.dataCollection} onChange={e => setEditorial({ ...editorial, dataCollection: parseInt(e.target.value) || 0 })} min={0} />
-                </div>
+            <CardContent className="p-6">
+              <div className="space-y-6">
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                  <div className="space-y-2">
+                    <Label className="text-sm font-medium text-slate-700">Data Collection and Interviews</Label>
+                    <Input
+                      type="number"
+                      value={editorial.dataCollection}
+                      onChange={e => setEditorial({ ...editorial, dataCollection: parseInt(e.target.value) || 0 })}
+                      className="transition-all duration-200 focus:ring-2 focus:ring-purple-500"
+                      min={0}
+                      placeholder="0"
+                    />
+                    <p className="text-xs text-slate-500">Days</p>
+                  </div>
 
-                <div>
-                  <Label>Content Development (Days)</Label>
-                  <Input type="number" value={editorial.contentDevelopment} onChange={e => setEditorial({ ...editorial, contentDevelopment: parseInt(e.target.value) || 0 })} min={0} />
-                </div>
+                  <div className="space-y-2">
+                    <Label className="text-sm font-medium text-slate-700">Content Development</Label>
+                    <Input
+                      type="number"
+                      value={editorial.contentDevelopment}
+                      onChange={e => setEditorial({ ...editorial, contentDevelopment: parseInt(e.target.value) || 0 })}
+                      className="transition-all duration-200 focus:ring-2 focus:ring-purple-500"
+                      min={0}
+                      placeholder="0"
+                    />
+                    <p className="text-xs text-slate-500">Days</p>
+                  </div>
 
-                <div>
-                  <Label>Content Review / Sub-editing (Days)</Label>
-                  <Input type="number" value={editorial.contentReview} onChange={e => setEditorial({ ...editorial, contentReview: parseInt(e.target.value) || 0 })} min={0} />
-                </div>
-
-                <div className="md:col-span-3">
-                  <Label className="text-base font-semibold">Client Review and Feedback</Label>
-                </div>
-
-                <div>
-                  <Label>{editorial.review1Name}</Label>
-                  <div className="flex items-center gap-2 mt-2">
-                    <Checkbox checked={editorial.skipReview1} onCheckedChange={(v) => setEditorial({ ...editorial, skipReview1: v })} />
-                    <Label>Skip</Label>
-                    <Input type="number" value={editorial.clientReview1} onChange={e => setEditorial({ ...editorial, clientReview1: parseInt(e.target.value) || 0 })} className="w-20" placeholder="Days" />
+                  <div className="space-y-2">
+                    <Label className="text-sm font-medium text-slate-700">Content Review / Sub-editing</Label>
+                    <Input
+                      type="number"
+                      value={editorial.contentReview}
+                      onChange={e => setEditorial({ ...editorial, contentReview: parseInt(e.target.value) || 0 })}
+                      className="transition-all duration-200 focus:ring-2 focus:ring-purple-500"
+                      min={0}
+                      placeholder="0"
+                    />
+                    <p className="text-xs text-slate-500">Days</p>
                   </div>
                 </div>
 
-                <div>
-                  <Label>{editorial.review2Name}</Label>
-                  <div className="flex items-center gap-2 mt-2">
-                    <Checkbox checked={editorial.skipReview2} onCheckedChange={(v) => setEditorial({ ...editorial, skipReview2: v })} />
-                    <Label>Skip</Label>
-                    <Input type="number" value={editorial.clientReview2} onChange={e => setEditorial({ ...editorial, clientReview2: parseInt(e.target.value) || 0 })} className="w-20" placeholder="Days" />
+                <div className="border-t pt-6">
+                  <h4 className="text-sm font-semibold text-slate-700 mb-4">Client Review and Feedback</h4>
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                    <div className="space-y-2">
+                      <Label className="text-sm font-medium text-slate-700">{editorial.review1Name}</Label>
+                      <div className="flex items-center gap-3 p-3 bg-slate-50 rounded-lg">
+                        <Checkbox
+                          checked={editorial.skipReview1}
+                          onCheckedChange={(v) => setEditorial({ ...editorial, skipReview1: v })}
+                          className="data-[state=checked]:bg-purple-600"
+                        />
+                        <Label className="text-sm text-slate-700">Skip</Label>
+                        <Input
+                          type="number"
+                          value={editorial.clientReview1}
+                          onChange={e => setEditorial({ ...editorial, clientReview1: parseInt(e.target.value) || 0 })}
+                          className="flex-1 transition-all duration-200 focus:ring-2 focus:ring-purple-500"
+                          placeholder="Days"
+                        />
+                      </div>
+                    </div>
+
+                    <div className="space-y-2">
+                      <Label className="text-sm font-medium text-slate-700">{editorial.review2Name}</Label>
+                      <div className="flex items-center gap-3 p-3 bg-slate-50 rounded-lg">
+                        <Checkbox
+                          checked={editorial.skipReview2}
+                          onCheckedChange={(v) => setEditorial({ ...editorial, skipReview2: v })}
+                          className="data-[state=checked]:bg-purple-600"
+                        />
+                        <Label className="text-sm text-slate-700">Skip</Label>
+                        <Input
+                          type="number"
+                          value={editorial.clientReview2}
+                          onChange={e => setEditorial({ ...editorial, clientReview2: parseInt(e.target.value) || 0 })}
+                          className="flex-1 transition-all duration-200 focus:ring-2 focus:ring-purple-500"
+                          placeholder="Days"
+                        />
+                      </div>
+                    </div>
+
+                    <div className="space-y-2">
+                      <Label className="text-sm font-medium text-slate-700">{editorial.review3Name}</Label>
+                      <div className="flex items-center gap-3 p-3 bg-slate-50 rounded-lg">
+                        <Checkbox
+                          checked={editorial.skipReview3}
+                          onCheckedChange={(v) => setEditorial({ ...editorial, skipReview3: v })}
+                          className="data-[state=checked]:bg-purple-600"
+                        />
+                        <Label className="text-sm text-slate-700">Skip</Label>
+                        <Input
+                          type="number"
+                          value={editorial.clientReview3}
+                          onChange={e => setEditorial({ ...editorial, clientReview3: parseInt(e.target.value) || 0 })}
+                          className="flex-1 transition-all duration-200 focus:ring-2 focus:ring-purple-500"
+                          placeholder="Days"
+                        />
+                      </div>
+                    </div>
                   </div>
                 </div>
 
-                <div>
-                  <Label>{editorial.review3Name}</Label>
-                  <div className="flex items-center gap-2 mt-2">
-                    <Checkbox checked={editorial.skipReview3} onCheckedChange={(v) => setEditorial({ ...editorial, skipReview3: v })} />
-                    <Label>Skip</Label>
-                    <Input type="number" value={editorial.clientReview3} onChange={e => setEditorial({ ...editorial, clientReview3: parseInt(e.target.value) || 0 })} className="w-20" placeholder="Days" />
+                <div className="border-t pt-6">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div className="space-y-2">
+                      <Label className="text-sm font-medium text-slate-700">Final Review & Submission</Label>
+                      <Input
+                        type="number"
+                        value={editorial.finalReview}
+                        onChange={e => setEditorial({ ...editorial, finalReview: parseInt(e.target.value) || 0 })}
+                        className="transition-all duration-200 focus:ring-2 focus:ring-purple-500"
+                        min={0}
+                        placeholder="0"
+                      />
+                      <p className="text-xs text-slate-500">Days</p>
+                    </div>
+
+                    <div className="space-y-2">
+                      <Label className="text-sm font-medium text-slate-700">Goodwill Days</Label>
+                      <Input
+                        type="number"
+                        value={editorial.goodwill}
+                        onChange={e => setEditorial({ ...editorial, goodwill: parseInt(e.target.value) || 0 })}
+                        className="transition-all duration-200 focus:ring-2 focus:ring-purple-500"
+                        min={0}
+                        placeholder="0"
+                      />
+                      <p className="text-xs text-slate-500">For this phase</p>
+                    </div>
                   </div>
-                </div>
-
-                <div>
-                  <Label>Final Review & Submission (Days)</Label>
-                  <Input type="number" value={editorial.finalReview} onChange={e => setEditorial({ ...editorial, finalReview: parseInt(e.target.value) || 0 })} min={0} />
-                </div>
-
-                <div>
-                  <Label>Goodwill Days (for this phase)</Label>
-                  <Input type="number" value={editorial.goodwill} onChange={e => setEditorial({ ...editorial, goodwill: parseInt(e.target.value) || 0 })} min={0} />
                 </div>
               </div>
             </CardContent>
           )}
         </Card>
 
-        <Card className="shadow">
-          <CardHeader className="bg-gradient-to-r from-green-600 to-green-700 text-white cursor-pointer" onClick={() => toggleSection('creative')}>
-            <CardTitle className="flex items-center justify-between">
+        <Card className="shadow rounded-lg overflow-hidden">
+          <CardHeader className="bg-gradient-to-r from-green-600 to-green-700 text-white cursor-pointer p-3" onClick={() => toggleSection('creative')}>
+            <CardTitle className="flex items-center justify-between text-base">
               <span>Creative Development</span>
               {expandedSections.creative ? <ChevronUp /> : <ChevronDown />}
             </CardTitle>
           </CardHeader>
           {expandedSections.creative && (
-            <CardContent>
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                <div className="md:col-span-3 flex items-center gap-2">
-                  <Checkbox checked={creative.themeAvailable} onCheckedChange={(v) => setCreative({ ...creative, themeAvailable: v })} />
-                  <Label>Theme available. Uncheck to enable theme development ({creative.themeDays} days)</Label>
+            <CardContent className="p-6">
+              <div className="space-y-6">
+                <div className="flex items-center gap-3 p-4 bg-slate-50 rounded-lg hover:bg-slate-100 transition-colors">
+                  <Checkbox
+                    checked={creative.themeAvailable}
+                    onCheckedChange={(v) => setCreative({ ...creative, themeAvailable: v })}
+                    className="data-[state=checked]:bg-green-600"
+                  />
+                  <Label className="text-sm text-slate-700 cursor-pointer">
+                    Theme available. Proceed to creative conceptualization ({creative.themeDays} days)
+                  </Label>
                 </div>
 
                 {!creative.themeAvailable && (
-                  <>
-                    <div>
-                      <Label>Theme Development Days</Label>
-                      <Input type="number" value={creative.themeDays} onChange={e => setCreative({ ...creative, themeDays: parseInt(e.target.value) || 0 })} min={0} />
+                  <div className="border-t pt-6">
+                    <h4 className="text-sm font-semibold text-slate-700 mb-4">Theme Development</h4>
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                      <div className="space-y-2">
+                        <Label className="text-sm font-medium text-slate-700">Theme Development Days</Label>
+                        <Input
+                          type="number"
+                          value={creative.themeDays}
+                          onChange={e => setCreative({ ...creative, themeDays: parseInt(e.target.value) || 0 })}
+                          className="transition-all duration-200 focus:ring-2 focus:ring-green-500"
+                          min={0}
+                          placeholder="0"
+                        />
+                        <p className="text-xs text-slate-500">Days</p>
+                      </div>
+                      <div className="space-y-2">
+                        <Label className="text-sm font-medium text-slate-700">Theme Revision 1</Label>
+                        <Input
+                          type="number"
+                          value={creative.themeRev1}
+                          onChange={e => setCreative({ ...creative, themeRev1: parseInt(e.target.value) || 0 })}
+                          className="transition-all duration-200 focus:ring-2 focus:ring-green-500"
+                          min={0}
+                          placeholder="0"
+                        />
+                        <p className="text-xs text-slate-500">Days</p>
+                      </div>
+                      <div className="space-y-2">
+                        <Label className="text-sm font-medium text-slate-700">Theme Revision 2</Label>
+                        <Input
+                          type="number"
+                          value={creative.themeRev2}
+                          onChange={e => setCreative({ ...creative, themeRev2: parseInt(e.target.value) || 0 })}
+                          className="transition-all duration-200 focus:ring-2 focus:ring-green-500"
+                          min={0}
+                          placeholder="0"
+                        />
+                        <p className="text-xs text-slate-500">Days</p>
+                      </div>
                     </div>
-                    <div>
-                      <Label>Theme Revision 1 (Days)</Label>
-                      <Input type="number" value={creative.themeRev1} onChange={e => setCreative({ ...creative, themeRev1: parseInt(e.target.value) || 0 })} min={0} />
-                    </div>
-                    <div>
-                      <Label>Theme Revision 2 (Days)</Label>
-                      <Input type="number" value={creative.themeRev2} onChange={e => setCreative({ ...creative, themeRev2: parseInt(e.target.value) || 0 })} min={0} />
-                    </div>
-                  </>
+                  </div>
                 )}
 
-                <div>
-                  <Label>Creative Design Duration (Days)</Label>
-                  <Input type="number" value={creative.designDuration} onChange={e => setCreative({ ...creative, designDuration: parseInt(e.target.value) || 0 })} min={0} />
+                <div className={!creative.themeAvailable ? "border-t pt-6" : ""}>
+                  <div className="space-y-2">
+                    <Label className="text-sm font-medium text-slate-700">Creative Conceptualization Duration</Label>
+                    <Input
+                      type="number"
+                      value={creative.designDuration}
+                      onChange={e => setCreative({ ...creative, designDuration: parseInt(e.target.value) || 0 })}
+                      className="transition-all duration-200 focus:ring-2 focus:ring-green-500 max-w-xs"
+                      min={0}
+                      placeholder="0"
+                    />
+                    <p className="text-xs text-slate-500">Days</p>
+                  </div>
                 </div>
               </div>
             </CardContent>
           )}
         </Card>
 
-        <Card className="shadow">
-          <CardHeader className="bg-gradient-to-r from-orange-600 to-orange-700 text-white cursor-pointer" onClick={() => toggleSection('design')}>
-            <CardTitle className="flex items-center justify-between">
+        <Card className="shadow rounded-lg overflow-hidden">
+          <CardHeader className="bg-gradient-to-r from-orange-600 to-orange-700 text-white cursor-pointer p-3" onClick={() => toggleSection('design')}>
+            <CardTitle className="flex items-center justify-between text-base">
               <span>Publication Design & Layout</span>
               {expandedSections.design ? <ChevronUp /> : <ChevronDown />}
             </CardTitle>
           </CardHeader>
           {expandedSections.design && (
-            <CardContent>
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                <div>
-                  <Label>Number of Pages (10 pages/day)</Label>
-                  <Input type="number" value={design.pages} onChange={e => setDesign({ ...design, pages: parseInt(e.target.value) || 0 })} min={1} />
-                  <p className="text-sm mt-1">Estimated work days: {Math.max(1, Math.ceil(design.pages / 10))} days</p>
-                </div>
-
-                <div>
-                  <Label>Review 1 Name</Label>
-                  <Input value={design.review1Name} onChange={e => setDesign({ ...design, review1Name: e.target.value })} />
-                  <div className="flex items-center gap-2 mt-2">
-                    <Checkbox checked={design.skipReview1} onCheckedChange={(v) => setDesign({ ...design, skipReview1: v })} />
-                    <Label>Skip</Label>
-                    <Input type="number" value={design.review1} onChange={e => setDesign({ ...design, review1: parseInt(e.target.value) || 0 })} className="w-20" />
+            <CardContent className="p-6">
+              <div className="space-y-6">
+                <div className="space-y-2">
+                  <Label className="text-sm font-medium text-slate-700">Number of Pages</Label>
+                  <Input
+                    type="number"
+                    value={design.pages}
+                    onChange={e => setDesign({ ...design, pages: parseInt(e.target.value) || 0 })}
+                    className="transition-all duration-200 focus:ring-2 focus:ring-orange-500 max-w-xs"
+                    min={1}
+                    placeholder="40"
+                  />
+                  <p className="text-xs text-slate-500">Rate: 10 pages/day</p>
+                  <div className="mt-2 p-3 bg-orange-50 rounded-lg">
+                    <p className="text-sm text-orange-800">
+                      <strong>Estimated work days:</strong> {Math.max(1, Math.ceil(design.pages / 10))} days
+                    </p>
                   </div>
                 </div>
 
-                <div>
-                  <Label>Review 2 Name</Label>
-                  <Input value={design.review2Name} onChange={e => setDesign({ ...design, review2Name: e.target.value })} />
-                  <div className="flex items-center gap-2 mt-2">
-                    <Checkbox checked={design.skipReview2} onCheckedChange={(v) => setDesign({ ...design, skipReview2: v })} />
-                    <Label>Skip</Label>
-                    <Input type="number" value={design.review2} onChange={e => setDesign({ ...design, review2: parseInt(e.target.value) || 0 })} className="w-20" />
+                <div className="border-t pt-6">
+                  <h4 className="text-sm font-semibold text-slate-700 mb-4">Client Reviews & Amendments</h4>
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                    <div className="space-y-2">
+                      <Label className="text-sm font-medium text-slate-700">Review 1 Name</Label>
+                      <Input
+                        value={design.review1Name}
+                        onChange={e => setDesign({ ...design, review1Name: e.target.value })}
+                        className="transition-all duration-200 focus:ring-2 focus:ring-orange-500"
+                        placeholder="Review name"
+                      />
+                      <div className="flex items-center gap-3 p-3 bg-slate-50 rounded-lg">
+                        <Checkbox
+                          checked={design.skipReview1}
+                          onCheckedChange={(v) => setDesign({ ...design, skipReview1: v })}
+                          className="data-[state=checked]:bg-orange-600"
+                        />
+                        <Label className="text-sm text-slate-700">Skip</Label>
+                        <Input
+                          type="number"
+                          value={design.review1}
+                          onChange={e => setDesign({ ...design, review1: parseInt(e.target.value) || 0 })}
+                          className="flex-1 transition-all duration-200 focus:ring-2 focus:ring-orange-500"
+                          placeholder="Days"
+                        />
+                      </div>
+                    </div>
+
+                    <div className="space-y-2">
+                      <Label className="text-sm font-medium text-slate-700">Review 2 Name</Label>
+                      <Input
+                        value={design.review2Name}
+                        onChange={e => setDesign({ ...design, review2Name: e.target.value })}
+                        className="transition-all duration-200 focus:ring-2 focus:ring-orange-500"
+                        placeholder="Review name"
+                      />
+                      <div className="flex items-center gap-3 p-3 bg-slate-50 rounded-lg">
+                        <Checkbox
+                          checked={design.skipReview2}
+                          onCheckedChange={(v) => setDesign({ ...design, skipReview2: v })}
+                          className="data-[state=checked]:bg-orange-600"
+                        />
+                        <Label className="text-sm text-slate-700">Skip</Label>
+                        <Input
+                          type="number"
+                          value={design.review2}
+                          onChange={e => setDesign({ ...design, review2: parseInt(e.target.value) || 0 })}
+                          className="flex-1 transition-all duration-200 focus:ring-2 focus:ring-orange-500"
+                          placeholder="Days"
+                        />
+                      </div>
+                    </div>
+
+                    <div className="space-y-2">
+                      <Label className="text-sm font-medium text-slate-700">Review 3 Name</Label>
+                      <Input
+                        value={design.review3Name}
+                        onChange={e => setDesign({ ...design, review3Name: e.target.value })}
+                        className="transition-all duration-200 focus:ring-2 focus:ring-orange-500"
+                        placeholder="Review name"
+                      />
+                      <div className="flex items-center gap-3 p-3 bg-slate-50 rounded-lg">
+                        <Checkbox
+                          checked={design.skipReview3}
+                          onCheckedChange={(v) => setDesign({ ...design, skipReview3: v })}
+                          className="data-[state=checked]:bg-orange-600"
+                        />
+                        <Label className="text-sm text-slate-700">Skip</Label>
+                        <Input
+                          type="number"
+                          value={design.review3}
+                          onChange={e => setDesign({ ...design, review3: parseInt(e.target.value) || 0 })}
+                          className="flex-1 transition-all duration-200 focus:ring-2 focus:ring-orange-500"
+                          placeholder="Days"
+                        />
+                      </div>
+                    </div>
                   </div>
                 </div>
 
-                <div>
-                  <Label>Review 3 Name</Label>
-                  <Input value={design.review3Name} onChange={e => setDesign({ ...design, review3Name: e.target.value })} />
-                  <div className="flex items-center gap-2 mt-2">
-                    <Checkbox checked={design.skipReview3} onCheckedChange={(v) => setDesign({ ...design, skipReview3: v })} />
-                    <Label>Skip</Label>
-                    <Input type="number" value={design.review3} onChange={e => setDesign({ ...design, review3: parseInt(e.target.value) || 0 })} className="w-20" />
+                <div className="border-t pt-6">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div className="space-y-2">
+                      <Label className="text-sm font-medium text-slate-700">Goodwill Days</Label>
+                      <Input
+                        type="number"
+                        value={design.goodwill}
+                        onChange={e => setDesign({ ...design, goodwill: parseInt(e.target.value) || 0 })}
+                        className="transition-all duration-200 focus:ring-2 focus:ring-orange-500"
+                        min={0}
+                        placeholder="0"
+                      />
+                      <p className="text-xs text-slate-500">Buffer days for this phase</p>
+                    </div>
+
+                    <div className="space-y-2">
+                      <Label className="text-sm font-medium text-slate-700">Approval Days</Label>
+                      <Input
+                        type="number"
+                        value={design.approval}
+                        onChange={e => setDesign({ ...design, approval: parseInt(e.target.value) || 0 })}
+                        className="transition-all duration-200 focus:ring-2 focus:ring-orange-500"
+                        min={0}
+                        placeholder="0"
+                      />
+                      <p className="text-xs text-slate-500">Final approval time</p>
+                    </div>
                   </div>
-                </div>
-
-                <div>
-                  <Label>Goodwill Days</Label>
-                  <Input type="number" value={design.goodwill} onChange={e => setDesign({ ...design, goodwill: parseInt(e.target.value) || 0 })} min={0} />
-                </div>
-
-                <div>
-                  <Label>Approval Days</Label>
-                  <Input type="number" value={design.approval} onChange={e => setDesign({ ...design, approval: parseInt(e.target.value) || 0 })} min={0} />
                 </div>
               </div>
             </CardContent>
           )}
         </Card>
 
-        <Card className="shadow">
-          <CardHeader className="bg-gradient-to-r from-teal-600 to-teal-700 text-white cursor-pointer" onClick={() => toggleSection('web')}>
-            <CardTitle className="flex items-center justify-between">
+        <Card className="shadow rounded-lg overflow-hidden">
+          <CardHeader className="bg-gradient-to-r from-teal-600 to-teal-700 text-white cursor-pointer p-3" onClick={() => toggleSection('web')}>
+            <CardTitle className="flex items-center justify-between text-base">
               <span>Optional Web Version Development</span>
               {expandedSections.web ? <ChevronUp /> : <ChevronDown />}
             </CardTitle>
           </CardHeader>
           {expandedSections.web && (
-            <CardContent>
-              <div className="flex items-center gap-2 mb-4">
-                <Checkbox checked={webDeliverablesRequired} onCheckedChange={setWebDeliverablesRequired} />
-                <Label>Web Deliverables Required</Label>
-              </div>
-
-              {webDeliverablesRequired && (
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                  <div>
-                    <Label>UI & UX Development (Days)</Label>
-                    <Input type="number" value={webDeliverables.uiuxDays} onChange={e => setWebDeliverables({ ...webDeliverables, uiuxDays: parseInt(e.target.value) || 0 })} min={0} />
-                  </div>
-                  <div>
-                    <Label>Deployment (Days)</Label>
-                    <Input type="number" value={webDeliverables.deploymentDays} onChange={e => setWebDeliverables({ ...webDeliverables, deploymentDays: parseInt(e.target.value) || 0 })} min={0} />
-                  </div>
+            <CardContent className="p-6">
+              <div className="space-y-6">
+                <div className="flex items-center gap-3 p-4 bg-slate-50 rounded-lg hover:bg-slate-100 transition-colors">
+                  <Checkbox
+                    checked={webDeliverablesRequired}
+                    onCheckedChange={setWebDeliverablesRequired}
+                    className="data-[state=checked]:bg-teal-600"
+                  />
+                  <Label className="text-sm text-slate-700 cursor-pointer font-medium">
+                    Web Deliverables Required
+                  </Label>
                 </div>
-              )}
+
+                {webDeliverablesRequired && (
+                  <div className="border-t pt-6">
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                      <div className="space-y-2">
+                        <Label className="text-sm font-medium text-slate-700">UI & UX Development</Label>
+                        <Input
+                          type="number"
+                          value={webDeliverables.uiuxDays}
+                          onChange={e => setWebDeliverables({ ...webDeliverables, uiuxDays: parseInt(e.target.value) || 0 })}
+                          className="transition-all duration-200 focus:ring-2 focus:ring-teal-500"
+                          min={0}
+                          placeholder="0"
+                        />
+                        <p className="text-xs text-slate-500">Days</p>
+                      </div>
+                      <div className="space-y-2">
+                        <Label className="text-sm font-medium text-slate-700">Deployment</Label>
+                        <Input
+                          type="number"
+                          value={webDeliverables.deploymentDays}
+                          onChange={e => setWebDeliverables({ ...webDeliverables, deploymentDays: parseInt(e.target.value) || 0 })}
+                          className="transition-all duration-200 focus:ring-2 focus:ring-teal-500"
+                          min={0}
+                          placeholder="0"
+                        />
+                        <p className="text-xs text-slate-500">Days</p>
+                      </div>
+                    </div>
+                  </div>
+                )}
+              </div>
             </CardContent>
           )}
         </Card>
 
-        <Card className="shadow">
-          <CardHeader className="bg-gradient-to-r from-red-600 to-red-700 text-white cursor-pointer" onClick={() => toggleSection('print')}>
-            <CardTitle className="flex items-center justify-between">
+        <Card className="shadow rounded-lg overflow-hidden">
+          <CardHeader className="bg-gradient-to-r from-red-600 to-red-700 text-white cursor-pointer p-3" onClick={() => toggleSection('print')}>
+            <CardTitle className="flex items-center justify-between text-base">
               <span>Print Production (Preparation of files to go to print)</span>
               {expandedSections.print ? <ChevronUp /> : <ChevronDown />}
             </CardTitle>
           </CardHeader>
           {expandedSections.print && (
-            <CardContent>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div>
-                  <Label>Preparation & Submission (Days)</Label>
-                  <Input type="number" value={print.preparation} onChange={e => setPrint({ ...print, preparation: parseInt(e.target.value) || 0 })} min={0} />
+            <CardContent className="p-6">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div className="space-y-2">
+                  <Label className="text-sm font-medium text-slate-700">Preparation & Submission</Label>
+                  <Input
+                    type="number"
+                    value={print.preparation}
+                    onChange={e => setPrint({ ...print, preparation: parseInt(e.target.value) || 0 })}
+                    className="transition-all duration-200 focus:ring-2 focus:ring-red-500"
+                    min={0}
+                    placeholder="0"
+                  />
+                  <p className="text-xs text-slate-500">Days to prepare files for print</p>
                 </div>
 
-                <div>
-                  <Label>Print Delivery (Days)</Label>
-                  <Input type="number" value={print.printDeliveryDays} onChange={e => setPrint({ ...print, printDeliveryDays: parseInt(e.target.value) || 0 })} min={0} />
+                <div className="space-y-2">
+                  <Label className="text-sm font-medium text-slate-700">Print Delivery</Label>
+                  <Input
+                    type="number"
+                    value={print.printDeliveryDays}
+                    onChange={e => setPrint({ ...print, printDeliveryDays: parseInt(e.target.value) || 0 })}
+                    className="transition-all duration-200 focus:ring-2 focus:ring-red-500"
+                    min={0}
+                    placeholder="0"
+                  />
+                  <p className="text-xs text-slate-500">Days for printing and delivery</p>
                 </div>
               </div>
             </CardContent>
@@ -691,9 +1004,9 @@ const ReportTimelineCalculator = () => {
         </div>
 
         {timeline && (
-          <Card className="shadow border-2 border-blue-200">
-            <CardHeader className="bg-gradient-to-r from-blue-600 to-blue-700 text-white">
-              <CardTitle className="text-2xl">Project Plan and Deliverables</CardTitle>
+          <Card className="shadow border-2 border-blue-200 rounded-lg overflow-hidden">
+            <CardHeader className="bg-gradient-to-r from-blue-600 to-blue-700 text-white p-3">
+              <CardTitle className="text-lg">Project Plan and Deliverables</CardTitle>
             </CardHeader>
             <CardContent>
               <div className="mb-6 p-4 bg-blue-50 rounded">
