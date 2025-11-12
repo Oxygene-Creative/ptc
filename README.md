@@ -1,36 +1,133 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Report / Publication Timeline Calculator
 
-## Getting Started
+A comprehensive timeline calculator for report and publication projects with support for multiple phases, scheduling modes, and export options.
 
-First, run the development server:
+## Features
+
+- **Backward & Forward Scheduling**: Calculate timelines from a deadline (backward) or from a start date (forward)
+- **Working Days Calculation**: Automatically excludes weekends and holidays
+- **Multiple Phases**:
+  - Editorial & Content Development
+  - Creative Development
+  - Publication Design & Layout
+  - Optional Web Version Development
+  - Print Production
+- **Export Options**:
+  - Copy to Clipboard (text format)
+  - Export to PDF
+  - Export to Excel (.xlsx)
+  - Save & Generate Shareable Link
+
+## Setup
+
+### Prerequisites
+
+- Node.js 18+
+- MongoDB (local or cloud instance)
+
+### Installation
+
+1. Clone the repository and install dependencies:
+
+```bash
+npm install
+```
+
+2. Configure MongoDB connection in `.env.local`:
+
+```env
+MONGODB_URI=mongodb://localhost:27017/timeline-calculator
+NEXT_PUBLIC_BASE_URL=http://localhost:3000
+```
+
+For MongoDB Atlas (cloud), use:
+```env
+MONGODB_URI=mongodb+srv://<username>:<password>@<cluster>.mongodb.net/timeline-calculator?retryWrites=true&w=majority
+```
+
+3. Run the development server:
 
 ```bash
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+4. Open [http://localhost:3000](http://localhost:3000) in your browser
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+## Usage
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+### Creating a Timeline
 
-## Learn More
+1. **Project Overview**: Fill in project title, client name, and scheduling preferences
+2. **Select Scheduling Mode**:
+   - **Backward**: Start from final delivery date and calculate backwards
+   - **Forward**: Start from project start date and calculate forwards
+3. **Configure Phases**: Set duration for each phase of the project
+4. **Calculate**: Click "Calculate Timeline" to generate the schedule
 
-To learn more about Next.js, take a look at the following resources:
+### Exporting Timelines
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+- **Copy to Clipboard**: Text format summary for quick sharing
+- **Export PDF**: Professional PDF document with project timeline
+- **Export Excel**: Spreadsheet format for further analysis
+- **Save / Generate Link**: Save to database and get a shareable URL
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+### Loading Saved Timelines
+
+Saved timelines can be accessed via URL:
+```
+http://localhost:3000/?id=<unique-id>
+```
+
+The application will automatically load the timeline data when the page is accessed with an ID parameter.
+
+## Project Structure
+
+```
+├── app/
+│   ├── api/
+│   │   └── timeline/
+│   │       └── route.ts          # API endpoints for saving/loading
+│   └── page.tsx                   # Main calculator component
+├── lib/
+│   └── mongodb.ts                 # MongoDB connection setup
+├── models/
+│   └── Timeline.ts                # MongoDB schema
+├── components/
+│   └── ui/                        # shadcn/ui components
+└── .env.local                     # Environment configuration
+```
+
+## Technologies
+
+- **Next.js 15** - React framework
+- **TypeScript** - Type safety
+- **MongoDB & Mongoose** - Database
+- **shadcn/ui** - UI components
+- **Tailwind CSS** - Styling
+- **jsPDF** - PDF generation
+- **xlsx** - Excel export
+- **nanoid** - Unique ID generation
+
+## Build for Production
+
+```bash
+npm run build
+npm start
+```
+
+## Environment Variables
+
+| Variable | Description | Default |
+|----------|-------------|---------|
+| `MONGODB_URI` | MongoDB connection string | `mongodb://localhost:27017/timeline-calculator` |
+| `NEXT_PUBLIC_BASE_URL` | Base URL for shareable links | `http://localhost:3000` |
 
 ## Deploy on Vercel
 
 The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+Check out the [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+
+## License
+
+© 2025 Report / Publication Timeline Calculator

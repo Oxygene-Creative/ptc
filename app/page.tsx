@@ -8,6 +8,9 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Calendar, Download, Copy, Save, Clock, AlertCircle, ChevronDown, ChevronUp } from 'lucide-react';
 import { Alert, AlertDescription } from '@/components/ui/alert';
+import jsPDF from 'jspdf';
+import autoTable from 'jspdf-autotable';
+import * as XLSX from 'xlsx';
 
 const ReportTimelineCalculator = () => {
   // Project metadata
@@ -20,7 +23,11 @@ const ReportTimelineCalculator = () => {
   const [includeWeekends, setIncludeWeekends] = useState(false); // default exclude weekends
   const [holidays, setHolidays] = useState('');
   const [statutory, setStatutory] = useState(0);
-  const [globalGoodwill, setGlobalGoodwill] = useState(0);
+  const [globalContingency, setGlobalContingency] = useState(0);
+  const [excludeDays, setExcludeDays] = useState(false);
+  const [excludeStartDate, setExcludeStartDate] = useState('');
+  const [excludeEndDate, setExcludeEndDate] = useState('');
+  const [excludeDescription, setExcludeDescription] = useState('');
 
   // UI expand state
   const [expandedSections, setExpandedSections] = useState({
@@ -34,13 +41,14 @@ const ReportTimelineCalculator = () => {
   // Editorial
   const [editorial, setEditorial] = useState({
     dataCollection: 5,
-    contentDevelopment: 10,
-    contentReview: 3,
+    writing: 10,
+    subEditing: 3,
+    internalProofreading: 2,
     clientReview1: 3,
     clientReview2: 3,
     clientReview3: 3,
     finalReview: 2,
-    goodwill: 0,
+    contingency: 0,
     review1Name: 'Content review 1',
     review2Name: 'Content review 2',
     review3Name: 'Content review 3',
@@ -66,10 +74,12 @@ const ReportTimelineCalculator = () => {
   // Publication design & layout
   const [design, setDesign] = useState({
     pages: 40,
+    layoutType: 'text-based', // 'text-based' or 'heavy-infographics'
+    editorialProofreading: 2,
     review1: 4,
     review2: 4,
     review3: 4,
-    goodwill: 2,
+    contingency: 2,
     approval: 2,
     review1Name: 'Client review & amends 1',
     review2Name: 'Client review & amends 2',
@@ -110,6 +120,55 @@ const ReportTimelineCalculator = () => {
   } | null>(null);
   const [warnings, setWarnings] = useState<string[]>([]);
 
+  // Load saved timeline from URL parameter
+  useEffect(() => {
+    const loadTimeline = async () => {
+      const params = new URLSearchParams(window.location.search);
+      const id = params.get('id');
+
+      if (id) {
+        try {
+          const response = await fetch(`/api/timeline?id=${id}`);
+          const result = await response.json();
+
+          if (result.success && result.data) {
+            const data = result.data;
+
+            // Load all the state from the saved data
+            setProjectName(data.projectName);
+            setReportType(data.clientName);
+            setSchedulingMode(data.schedulingMethod);
+            setStartDate(data.startDate ? new Date(data.startDate).toISOString().split('T')[0] : '');
+            setFinalDate(data.endDate ? new Date(data.endDate).toISOString().split('T')[0] : '');
+            setHolidays(data.numberOfHolidays ? '' : ''); // holidays are stored as count in DB
+            setIncludeWeekends(data.useExtendedWeekends);
+            setStatutory(data.finalDeliveryDays);
+
+            setEditorial(data.editorial);
+            setCreative(data.creative);
+            setDesign(data.design);
+            setWebDeliverablesRequired(data.webDevelopment.enabled);
+            setWebDeliverables({
+              uiuxDays: data.webDevelopment.frontendDevelopment,
+              deploymentDays: data.webDevelopment.testing
+            });
+            setPrint({
+              preparation: data.printProduction.prePressProofing,
+              printDeliveryDays: data.printProduction.printing
+            });
+          } else {
+            alert('Timeline not found or invalid ID.');
+          }
+        } catch (error) {
+          console.error('Error loading timeline:', error);
+          alert('Failed to load timeline.');
+        }
+      }
+    };
+
+    loadTimeline();
+  }, []);
+
   // Helper: parse holiday list
   const parseHolidayList = () => {
     return holidays.split(',')
@@ -132,13 +191,22 @@ const ReportTimelineCalculator = () => {
     const holidayList: HolidayList = parseHolidayList();
     let remaining: number = Math.abs(days);
     const direction: number = forward ? 1 : -1;
+
+    // Get excluded date range
+    const excludeStart = excludeDays && excludeStartDate ? new Date(excludeStartDate) : null;
+    const excludeEnd = excludeDays && excludeEndDate ? new Date(excludeEndDate) : null;
+
     while (remaining > 0) {
       result.setDate(result.getDate() + direction);
       const day = result.getDay();
       const isWeekend = !includeWeekends && (day === 0 || day === 6);
       const iso: ISODateString = result.toISOString().split('T')[0];
       const isHoliday = holidayList.includes(iso);
-      if (!isWeekend && !isHoliday) remaining--;
+
+      // Check if date is in excluded range
+      const isExcluded = excludeStart && excludeEnd && result >= excludeStart && result <= excludeEnd;
+
+      if (!isWeekend && !isHoliday && !isExcluded) remaining--;
     }
     return result;
   };
@@ -148,6 +216,35 @@ const ReportTimelineCalculator = () => {
     if (!start || !end) return 0;
     const ms = 24 * 60 * 60 * 1000;
     return Math.round((end - start) / ms) + 1;
+  };
+
+  // Calculate excluded working days
+  const calculateExcludedWorkingDays = () => {
+    if (!excludeDays || !excludeStartDate || !excludeEndDate) return 0;
+
+    const start = new Date(excludeStartDate);
+    const end = new Date(excludeEndDate);
+
+    if (end < start) return 0;
+
+    let excludedDays = 0;
+    const current = new Date(start);
+    const holidayList = parseHolidayList();
+
+    while (current <= end) {
+      const day = current.getDay();
+      const isWeekend = !includeWeekends && (day === 0 || day === 6);
+      const iso = current.toISOString().split('T')[0];
+      const isHoliday = holidayList.includes(iso);
+
+      if (!isWeekend && !isHoliday) {
+        excludedDays++;
+      }
+
+      current.setDate(current.getDate() + 1);
+    }
+
+    return excludedDays;
   };
 
   // Validation helper
@@ -161,7 +258,7 @@ const ReportTimelineCalculator = () => {
     // numeric limits
     const numericFields = [
       { val: editorial.dataCollection, name: 'Data collection days' },
-      { val: editorial.contentDevelopment, name: 'Content development days' },
+      { val: editorial.writing, name: 'Writing days' },
       { val: design.pages, name: 'Pages' },
       { val: creative.designDuration, name: 'Creative design duration' }
     ];
@@ -187,34 +284,36 @@ const ReportTimelineCalculator = () => {
 
     // Compute per-phase days taking skip flags into account
     const editorialDays = editorial.dataCollection
-      + editorial.contentDevelopment
-      + editorial.contentReview
+      + editorial.writing
+      + editorial.subEditing
+      + editorial.internalProofreading
       + (!editorial.skipReview1 ? editorial.clientReview1 : 0)
       + (!editorial.skipReview2 ? editorial.clientReview2 : 0)
       + (!editorial.skipReview3 ? editorial.clientReview3 : 0)
       + editorial.finalReview
-      + editorial.goodwill;
+      + editorial.contingency;
 
     const creativeDays = (creative.themeAvailable ? 0 : creative.themeDays)
-      + creative.themeRev1
-      + creative.themeRev2
-      + creative.designDuration
-      + creative.rev1Name ? 0 : 0; // placeholder to ensure available
+      + (!creative.skipRev1 ? creative.themeRev1 : 0)
+      + (!creative.skipRev2 ? creative.themeRev2 : 0)
+      + creative.designDuration;
 
-    const designWorkDays = Math.max(1, Math.ceil(design.pages / 10));
+    const pagesPerDay = design.layoutType === 'text-based' ? 10 : 5;
+    const designWorkDays = Math.max(1, Math.ceil(design.pages / pagesPerDay));
     const designDays = designWorkDays
+      + design.editorialProofreading
       + (!design.skipReview1 ? design.review1 : 0)
       + (!design.skipReview2 ? design.review2 : 0)
       + (!design.skipReview3 ? design.review3 : 0)
-      + design.goodwill
+      + design.contingency
       + design.approval;
 
     const webDays = webDeliverablesRequired ? (webDeliverables.uiuxDays + webDeliverables.deploymentDays) : 0;
     const printDays = print.preparation + print.printDeliveryDays;
 
-    // Global goodwill applies to entire timeline. We'll add it as buffer before statutory or before final delivery.
+    // Global contingency applies to entire timeline. We'll add it as buffer before statutory or before final delivery.
     const totalInternalDays = editorialDays + creativeDays + designDays + webDays + printDays;
-    const totalDays = totalInternalDays + globalGoodwill + statutory;
+    const totalDays = totalInternalDays + globalContingency + statutory;
 
     if (totalDays > 365) setWarnings(['Total timeline exceeds 365 days. Consider revising durations']);
 
@@ -222,14 +321,14 @@ const ReportTimelineCalculator = () => {
     let phases: Phase[] = [];
     if (schedulingMode === 'backward') {
       const deadline = new Date(finalDate);
-      // Apply statutory days after print. Global goodwill is applied before statutory but after print production.
+      // Apply statutory days after print. Global contingency is applied before statutory but after print production.
       const statutoryEnd = new Date(deadline);
       const statutoryStart = addWorkingDays(statutoryEnd, -statutory, false);
 
-      const goodwillEnd = statutoryStart;
-      const goodwillStart = addWorkingDays(goodwillEnd, -globalGoodwill, false);
+      const contingencyEnd = statutoryStart;
+      const contingencyStart = addWorkingDays(contingencyEnd, -globalContingency, false);
 
-      const printEnd = goodwillStart;
+      const printEnd = contingencyStart;
       const printStart = addWorkingDays(printEnd, -printDays, false);
 
       const designEnd = printStart;
@@ -249,7 +348,7 @@ const ReportTimelineCalculator = () => {
       const webStart = webDeliverablesRequired ? addWorkingDays(webEnd, -webDays, false) : null;
 
       // Calculate review dates for editorial (backward scheduling)
-      let cumulativeDays = editorial.dataCollection + editorial.contentDevelopment + editorial.contentReview;
+      let cumulativeDays = editorial.dataCollection + editorial.writing + editorial.subEditing + editorial.internalProofreading;
       const editorialReviews = [];
       if (!editorial.skipReview1) {
         editorialReviews.push({ name: editorial.review1Name, date: addWorkingDays(editorialStart, cumulativeDays, true) });
@@ -275,7 +374,7 @@ const ReportTimelineCalculator = () => {
       if (webDeliverablesRequired) phases.push({ name: 'Web Deliverables', start: webStart, end: webEnd, days: webDays });
 
       phases.push({ name: 'Print Production', start: printStart, end: printEnd, days: printDays });
-      phases.push({ name: 'Global Goodwill Buffer', start: goodwillStart, end: goodwillEnd, days: globalGoodwill });
+      phases.push({ name: 'Global Contingency or Buffer Days', start: contingencyStart, end: contingencyEnd, days: globalContingency });
       phases.push({ name: 'Statutory Period', start: statutoryStart, end: statutoryEnd, days: statutory });
 
     } else {
@@ -297,14 +396,14 @@ const ReportTimelineCalculator = () => {
       const printStart = webDeliverablesRequired ? webEnd : designEnd;
       const printEnd = addWorkingDays(printStart, printDays, true);
 
-      const goodwillStart = addWorkingDays(printEnd, 1, true);
-      const goodwillEnd = addWorkingDays(goodwillStart, globalGoodwill, true);
+      const contingencyStart = addWorkingDays(printEnd, 1, true);
+      const contingencyEnd = addWorkingDays(contingencyStart, globalContingency, true);
 
-      const statutoryStart = addWorkingDays(goodwillEnd, 1, true);
+      const statutoryStart = addWorkingDays(contingencyEnd, 1, true);
       const statutoryEnd = addWorkingDays(statutoryStart, statutory, true);
 
       // Calculate review dates for editorial (forward scheduling)
-      let cumulativeDaysForward = editorial.dataCollection + editorial.contentDevelopment + editorial.contentReview;
+      let cumulativeDaysForward = editorial.dataCollection + editorial.writing + editorial.subEditing + editorial.internalProofreading;
       const editorialReviewsForward = [];
       if (!editorial.skipReview1) {
         editorialReviewsForward.push({ name: editorial.review1Name, date: addWorkingDays(editorialStart, cumulativeDaysForward, true) });
@@ -330,7 +429,7 @@ const ReportTimelineCalculator = () => {
       if (webDeliverablesRequired) phases.push({ name: 'Web Deliverables', start: webStart, end: webEnd, days: webDays });
 
       phases.push({ name: 'Print Production', start: printStart, end: printEnd, days: printDays });
-      phases.push({ name: 'Global Goodwill Buffer', start: goodwillStart, end: goodwillEnd, days: globalGoodwill });
+      phases.push({ name: 'Global Contingency or Buffer Days', start: contingencyStart, end: contingencyEnd, days: globalContingency });
       phases.push({ name: 'Statutory Period', start: statutoryStart, end: statutoryEnd, days: statutory });
     }
 
@@ -345,15 +444,394 @@ const ReportTimelineCalculator = () => {
   // copy summary text
   const exportToText = () => {
     if (!timeline) return;
-    let text = `PROJECT: ${projectName}\nType: ${reportType}\nGenerated: ${new Date().toLocaleString()}\nMode: ${schedulingMode}\nTotal Duration: ${timeline.totalDays} days\n\n`;
+    let text = `PROJECT: ${projectName}\nType: ${reportType}\nGenerated: ${new Date().toLocaleString()}\nMode: ${schedulingMode === 'backward' ? 'Backward (from deadline)' : 'Forward (from start)'}\n`;
+    text += `Layout Type: ${design.layoutType === 'text-based' ? 'Text Based (10 pages/day)' : 'Heavy Infographics (5 pages/day)'}\n`;
+    text += `Total Duration: ${timeline.totalDays} days\nStatutory Days: ${statutory}\n`;
+
+    if (excludeDays && excludeStartDate && excludeEndDate) {
+      text += `Excluded Period: ${formatDate(new Date(excludeStartDate))} to ${formatDate(new Date(excludeEndDate))}`;
+      if (excludeDescription) text += ` - ${excludeDescription}`;
+      text += ` (${calculateExcludedWorkingDays()} working days excluded)\n`;
+    }
+
+    text += `\nPHASES:\n${'='.repeat(50)}\n\n`;
+
     timeline.phases.forEach((p, i) => {
       text += `${i + 1}. ${p.name}\n  Start: ${formatDate(p.start)}\n  End:   ${formatDate(p.end)}\n  Days:  ${p.days}\n`;
       if (p.reviews) p.reviews.forEach(r => text += `    - ${r.name}: ${formatDate(r.date)}\n`);
       if (p.milestones) p.milestones.forEach(m => text += `    - ${m.name}: ${formatDate(m.date)}\n`);
+      if (p.theme) text += `    Theme: ${p.theme}\n`;
       text += '\n';
     });
+
+    text += `${'='.repeat(50)}\nExpected Day of Delivery: ${formatDate(timeline.phases[timeline.phases.length - 1]?.end)}\n`;
+
     navigator.clipboard.writeText(text);
     alert('Timeline copied to clipboard');
+  };
+
+  // Export to PDF
+  const exportToPDF = () => {
+    if (!timeline) return;
+
+    const doc = new jsPDF();
+    const pageWidth = doc.internal.pageSize.width;
+
+    // Header with gradient background (simulated with rectangle)
+    doc.setFillColor(37, 99, 235); // Blue color
+    doc.rect(0, 0, pageWidth, 35, 'F');
+
+    // Title in white
+    doc.setFontSize(22);
+    doc.setFont('helvetica', 'bold');
+    doc.setTextColor(255, 255, 255);
+    doc.text('Report / Publication Timeline', pageWidth / 2, 15, { align: 'center' });
+
+    doc.setFontSize(10);
+    doc.setFont('helvetica', 'normal');
+    doc.text(projectName, pageWidth / 2, 23, { align: 'center' });
+    doc.setFontSize(9);
+    doc.text(`Generated: ${new Date().toLocaleDateString('en-GB', { year: 'numeric', month: 'long', day: 'numeric' })}`, pageWidth / 2, 29, { align: 'center' });
+
+    // Reset text color
+    doc.setTextColor(0, 0, 0);
+
+    // Project Information Section
+    let yPosition = 45;
+    doc.setFontSize(12);
+    doc.setFont('helvetica', 'bold');
+    doc.setTextColor(37, 99, 235);
+    doc.text('Project Information', 14, yPosition);
+
+    // Draw line under section header
+    doc.setDrawColor(37, 99, 235);
+    doc.setLineWidth(0.5);
+    doc.line(14, yPosition + 1, pageWidth - 14, yPosition + 1);
+
+    yPosition += 8;
+    doc.setFontSize(10);
+    doc.setFont('helvetica', 'normal');
+    doc.setTextColor(60, 60, 60);
+
+    // Two-column layout for project info
+    const leftCol = 14;
+    const rightCol = pageWidth / 2 + 5;
+
+    doc.setFont('helvetica', 'bold');
+    doc.text('Client:', leftCol, yPosition);
+    doc.setFont('helvetica', 'normal');
+    doc.text(reportType, leftCol + 25, yPosition);
+
+    doc.setFont('helvetica', 'bold');
+    doc.text('Scheduling Mode:', rightCol, yPosition);
+    doc.setFont('helvetica', 'normal');
+    doc.text(schedulingMode === 'backward' ? 'Backward (from deadline)' : 'Forward (from start)', rightCol + 38, yPosition);
+
+    yPosition += 6;
+    doc.setFont('helvetica', 'bold');
+    doc.text('Layout Type:', leftCol, yPosition);
+    doc.setFont('helvetica', 'normal');
+    doc.text(design.layoutType === 'text-based' ? 'Text Based (10 pages/day)' : 'Heavy Infographics (5 pages/day)', leftCol + 25, yPosition);
+
+    doc.setFont('helvetica', 'bold');
+    doc.text('Total Duration:', rightCol, yPosition);
+    doc.setFont('helvetica', 'normal');
+    doc.text(`${timeline.totalDays} working days`, rightCol + 38, yPosition);
+
+    yPosition += 6;
+    doc.setFont('helvetica', 'bold');
+    doc.text('Statutory Days:', leftCol, yPosition);
+    doc.setFont('helvetica', 'normal');
+    doc.text(`${statutory} days`, leftCol + 25, yPosition);
+
+    // Excluded period info if applicable
+    if (excludeDays && excludeStartDate && excludeEndDate) {
+      yPosition += 8;
+      doc.setFillColor(255, 237, 213); // Light orange background
+      doc.roundedRect(14, yPosition - 4, pageWidth - 28, 12, 2, 2, 'F');
+
+      doc.setFontSize(9);
+      doc.setTextColor(194, 65, 12); // Dark orange text
+      doc.setFont('helvetica', 'bold');
+      doc.text('⚠ Excluded Period:', 16, yPosition);
+      doc.setFont('helvetica', 'normal');
+      let excludeText = `${formatDate(new Date(excludeStartDate))} to ${formatDate(new Date(excludeEndDate))}`;
+      if (excludeDescription) excludeText += ` - ${excludeDescription}`;
+      excludeText += ` (${calculateExcludedWorkingDays()} working days excluded)`;
+      doc.text(excludeText, 16, yPosition + 5);
+      yPosition += 12;
+      doc.setFontSize(10);
+    }
+
+    yPosition += 10;
+
+    // Timeline Section Header
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(12);
+    doc.setTextColor(37, 99, 235);
+    doc.text('Project Timeline', 14, yPosition);
+    doc.setDrawColor(37, 99, 235);
+    doc.line(14, yPosition + 1, pageWidth - 14, yPosition + 1);
+
+    yPosition += 6;
+
+    // Prepare table data
+    const tableData: any[] = [];
+    timeline.phases.forEach((phase) => {
+      tableData.push([
+        phase.name,
+        formatDate(phase.start),
+        formatDate(phase.end),
+        phase.days.toString()
+      ]);
+
+      if (phase.reviews) {
+        phase.reviews.forEach(review => {
+          tableData.push([
+            `  └─ ${review.name}`,
+            formatDate(review.date),
+            '',
+            ''
+          ]);
+        });
+      }
+
+      if (phase.milestones) {
+        phase.milestones.forEach(milestone => {
+          tableData.push([
+            `  └─ ${milestone.name}`,
+            formatDate(milestone.date),
+            '',
+            ''
+          ]);
+        });
+      }
+
+      if (phase.theme) {
+        tableData.push([
+          `  └─ Theme: ${phase.theme}`,
+          '',
+          '',
+          ''
+        ]);
+      }
+    });
+
+    // Add table with professional styling
+    autoTable(doc, {
+      startY: yPosition,
+      head: [['Phase', 'Start Date', 'End Date', 'Days']],
+      body: tableData,
+      theme: 'striped',
+      headStyles: {
+        fillColor: [37, 99, 235],
+        textColor: [255, 255, 255],
+        fontSize: 10,
+        fontStyle: 'bold',
+        halign: 'left',
+        cellPadding: 3
+      },
+      styles: {
+        fontSize: 9,
+        cellPadding: 2.5,
+        lineColor: [226, 232, 240],
+        lineWidth: 0.1
+      },
+      alternateRowStyles: {
+        fillColor: [248, 250, 252]
+      },
+      columnStyles: {
+        0: { cellWidth: 80, fontStyle: 'normal' },
+        1: { cellWidth: 35, halign: 'center' },
+        2: { cellWidth: 35, halign: 'center' },
+        3: { cellWidth: 20, halign: 'center' }
+      },
+      didParseCell: (data) => {
+        // Style milestone/review rows differently
+        if (data.section === 'body' && data.column.index === 0) {
+          const cellText = data.cell.raw as string;
+          if (cellText && cellText.includes('└─')) {
+            data.cell.styles.textColor = [100, 116, 139];
+            data.cell.styles.fontSize = 8;
+          }
+        }
+      }
+    });
+
+    // Add professional footer with expected delivery date
+    const docWithTable = doc as typeof doc & { lastAutoTable?: { finalY: number } };
+    const finalY = docWithTable.lastAutoTable?.finalY || yPosition;
+
+    // Footer box with light blue background
+    const footerY = finalY + 8;
+    doc.setFillColor(239, 246, 255);
+    doc.roundedRect(14, footerY, pageWidth - 28, 16, 2, 2, 'F');
+
+    // Expected delivery date text
+    doc.setFontSize(12);
+    doc.setFont('helvetica', 'bold');
+    doc.setTextColor(37, 99, 235);
+    doc.text('Expected Day of Delivery:', 18, footerY + 7);
+
+    doc.setFont('helvetica', 'normal');
+    doc.setTextColor(51, 65, 85);
+    doc.setFontSize(11);
+    doc.text(formatDate(timeline.phases[timeline.phases.length - 1]?.end), 18, footerY + 13);
+
+    // Generated timestamp at bottom
+    const timestamp = footerY + 25;
+    doc.setFontSize(8);
+    doc.setTextColor(148, 163, 184);
+    doc.setFont('helvetica', 'italic');
+    doc.text(`Generated on ${new Date().toLocaleString()}`, pageWidth / 2, timestamp, { align: 'center' });
+
+    // Save the PDF
+    doc.save(`${projectName.replace(/\s+/g, '_')}_Timeline.pdf`);
+  };
+
+  // Export to Excel
+  const exportToExcel = () => {
+    if (!timeline) return;
+
+    // Prepare data for Excel
+    const worksheetData: any[] = [
+      ['Report / Publication Timeline'],
+      [],
+      ['Project:', projectName],
+      ['Client:', reportType],
+      ['Generated:', new Date().toLocaleString()],
+      ['Scheduling Mode:', schedulingMode === 'backward' ? 'Backward (from deadline)' : 'Forward (from start)'],
+      ['Layout Type:', design.layoutType === 'text-based' ? 'Text Based (10 pages/day)' : 'Heavy Infographics (5 pages/day)'],
+      ['Total Duration:', `${timeline.totalDays} working days`],
+      ['Statutory Days:', statutory]
+    ];
+
+    // Add excluded period info if applicable
+    if (excludeDays && excludeStartDate && excludeEndDate) {
+      let excludeText = `${formatDate(new Date(excludeStartDate))} to ${formatDate(new Date(excludeEndDate))}`;
+      if (excludeDescription) excludeText += ` - ${excludeDescription}`;
+      excludeText += ` (${calculateExcludedWorkingDays()} working days excluded)`;
+      worksheetData.push(['Excluded Period:', excludeText]);
+    }
+
+    worksheetData.push([]);
+    worksheetData.push(['Phase', 'Start Date', 'End Date', 'Days']);
+
+    timeline.phases.forEach((phase) => {
+      worksheetData.push([
+        phase.name,
+        formatDate(phase.start),
+        formatDate(phase.end),
+        phase.days
+      ]);
+
+      if (phase.reviews) {
+        phase.reviews.forEach(review => {
+          worksheetData.push([
+            `  └─ ${review.name}`,
+            formatDate(review.date),
+            '',
+            ''
+          ]);
+        });
+      }
+
+      if (phase.milestones) {
+        phase.milestones.forEach(milestone => {
+          worksheetData.push([
+            `  └─ ${milestone.name}`,
+            formatDate(milestone.date),
+            '',
+            ''
+          ]);
+        });
+      }
+
+      if (phase.theme) {
+        worksheetData.push([
+          `  └─ Theme: ${phase.theme}`,
+          '',
+          '',
+          ''
+        ]);
+      }
+    });
+
+    // Add expected delivery date
+    worksheetData.push([]);
+    worksheetData.push(['Expected Day of Delivery:', formatDate(timeline.phases[timeline.phases.length - 1]?.end)]);
+
+    // Create workbook and worksheet
+    const ws = XLSX.utils.aoa_to_sheet(worksheetData);
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, 'Timeline');
+
+    // Set column widths
+    ws['!cols'] = [
+      { wch: 40 },
+      { wch: 15 },
+      { wch: 15 },
+      { wch: 10 }
+    ];
+
+    // Save the Excel file
+    XLSX.writeFile(wb, `${projectName.replace(/\s+/g, '_')}_Timeline.xlsx`);
+  };
+
+  // Save and Generate Link
+  const saveAndGenerateLink = async () => {
+    if (!projectName || !reportType) {
+      alert('Please fill in Project Title and Client Name before saving.');
+      return;
+    }
+
+    try {
+      const data = {
+        projectName,
+        clientName: reportType,
+        schedulingMethod: schedulingMode,
+        startDate: startDate || undefined,
+        endDate: finalDate || undefined,
+        numberOfHolidays: parseInt(holidays) || 0,
+        useExtendedWeekends: includeWeekends,
+        finalDeliveryDays: statutory,
+        editorial,
+        creative,
+        design,
+        webDevelopment: {
+          enabled: webDeliverablesRequired,
+          frontendDevelopment: webDeliverables.uiuxDays,
+          backendIntegration: 0,
+          testing: webDeliverables.deploymentDays
+        },
+        printProduction: {
+          prePressProofing: print.preparation,
+          printing: print.printDeliveryDays,
+          binding: 0
+        }
+      };
+
+      const response = await fetch('/api/timeline', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(data)
+      });
+
+      const result = await response.json();
+
+      if (result.success) {
+        const url = result.url;
+        await navigator.clipboard.writeText(url);
+        alert(`Timeline saved successfully!\n\nShareable link copied to clipboard:\n${url}`);
+      } else {
+        alert('Failed to save timeline. Please try again.');
+      }
+    } catch (error) {
+      console.error('Error saving timeline:', error);
+      alert('An error occurred while saving the timeline.');
+    }
   };
 
   const toggleSection = (section) => {
@@ -501,11 +979,11 @@ const ReportTimelineCalculator = () => {
                   </div>
 
                   <div className="space-y-2">
-                    <Label className="text-sm font-medium text-slate-700">Global Goodwill Buffer</Label>
+                    <Label className="text-sm font-medium text-slate-700">Global Contingency or Buffer Days</Label>
                     <Input
                       type="number"
-                      value={globalGoodwill}
-                      onChange={e => setGlobalGoodwill(parseInt(e.target.value) || 0)}
+                      value={globalContingency}
+                      onChange={e => setGlobalContingency(parseInt(e.target.value) || 0)}
                       className="transition-all duration-200 focus:ring-2 focus:ring-blue-500"
                       min={0}
                       placeholder="0"
@@ -513,6 +991,68 @@ const ReportTimelineCalculator = () => {
                     <p className="text-xs text-slate-500">Days</p>
                   </div>
                 </div>
+              </div>
+
+              {/* Exclude Days */}
+              <div className="border-t pt-6">
+                <div className="flex items-center gap-3 p-3 bg-blue-50 rounded-lg hover:bg-blue-100 transition-colors mb-4">
+                  <Checkbox
+                    checked={excludeDays}
+                    onCheckedChange={(checked) => setExcludeDays(checked === true)}
+                    id="excludeDays"
+                    className="data-[state=checked]:bg-blue-600"
+                  />
+                  <Label htmlFor="excludeDays" className="text-sm font-semibold text-slate-700 cursor-pointer">
+                    Exclude Days from Timeline
+                  </Label>
+                </div>
+
+                {excludeDays && (
+                  <div className="space-y-4 pl-8">
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                      <div className="space-y-2">
+                        <Label className="text-sm font-medium text-slate-700">
+                          Start Date <span className="text-red-500">*</span>
+                        </Label>
+                        <Input
+                          type="date"
+                          value={excludeStartDate}
+                          onChange={e => setExcludeStartDate(e.target.value)}
+                          className="transition-all duration-200 focus:ring-2 focus:ring-blue-500"
+                        />
+                      </div>
+
+                      <div className="space-y-2">
+                        <Label className="text-sm font-medium text-slate-700">
+                          End Date <span className="text-red-500">*</span>
+                        </Label>
+                        <Input
+                          type="date"
+                          value={excludeEndDate}
+                          onChange={e => setExcludeEndDate(e.target.value)}
+                          className="transition-all duration-200 focus:ring-2 focus:ring-blue-500"
+                        />
+                      </div>
+                    </div>
+
+                    <div className="space-y-2">
+                      <Label className="text-sm font-medium text-slate-700">Description</Label>
+                      <Input
+                        value={excludeDescription}
+                        onChange={e => setExcludeDescription(e.target.value)}
+                        className="transition-all duration-200 focus:ring-2 focus:ring-blue-500"
+                        placeholder="E.g., Holiday break, Company shutdown, etc."
+                      />
+                      <p className="text-xs text-slate-500">Optional: Describe the reason for exclusion</p>
+                    </div>
+
+                    <div className="p-3 bg-blue-50 rounded-lg">
+                      <p className="text-sm text-blue-800">
+                        <strong>Note:</strong> These days will be excluded from the overall delivery timeline calculation.
+                      </p>
+                    </div>
+                  </div>
+                )}
               </div>
             </div>
           </CardContent>
@@ -537,7 +1077,7 @@ const ReportTimelineCalculator = () => {
           {expandedSections.editorial && (
             <CardContent className="p-6">
               <div className="space-y-6">
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
                   <div className="space-y-2">
                     <Label className="text-sm font-medium text-slate-700">Data Collection and Interviews</Label>
                     <Input
@@ -552,11 +1092,11 @@ const ReportTimelineCalculator = () => {
                   </div>
 
                   <div className="space-y-2">
-                    <Label className="text-sm font-medium text-slate-700">Content Development</Label>
+                    <Label className="text-sm font-medium text-slate-700">Writing</Label>
                     <Input
                       type="number"
-                      value={editorial.contentDevelopment}
-                      onChange={e => setEditorial({ ...editorial, contentDevelopment: parseInt(e.target.value) || 0 })}
+                      value={editorial.writing}
+                      onChange={e => setEditorial({ ...editorial, writing: parseInt(e.target.value) || 0 })}
                       className="transition-all duration-200 focus:ring-2 focus:ring-purple-500"
                       min={0}
                       placeholder="0"
@@ -565,11 +1105,24 @@ const ReportTimelineCalculator = () => {
                   </div>
 
                   <div className="space-y-2">
-                    <Label className="text-sm font-medium text-slate-700">Content Review / Sub-editing</Label>
+                    <Label className="text-sm font-medium text-slate-700">Sub-editing</Label>
                     <Input
                       type="number"
-                      value={editorial.contentReview}
-                      onChange={e => setEditorial({ ...editorial, contentReview: parseInt(e.target.value) || 0 })}
+                      value={editorial.subEditing}
+                      onChange={e => setEditorial({ ...editorial, subEditing: parseInt(e.target.value) || 0 })}
+                      className="transition-all duration-200 focus:ring-2 focus:ring-purple-500"
+                      min={0}
+                      placeholder="0"
+                    />
+                    <p className="text-xs text-slate-500">Days</p>
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label className="text-sm font-medium text-slate-700">Internal Proofreading</Label>
+                    <Input
+                      type="number"
+                      value={editorial.internalProofreading}
+                      onChange={e => setEditorial({ ...editorial, internalProofreading: parseInt(e.target.value) || 0 })}
                       className="transition-all duration-200 focus:ring-2 focus:ring-purple-500"
                       min={0}
                       placeholder="0"
@@ -656,11 +1209,11 @@ const ReportTimelineCalculator = () => {
                     </div>
 
                     <div className="space-y-2">
-                      <Label className="text-sm font-medium text-slate-700">Goodwill Days</Label>
+                      <Label className="text-sm font-medium text-slate-700">Contingency or Buffer Days</Label>
                       <Input
                         type="number"
-                        value={editorial.goodwill}
-                        onChange={e => setEditorial({ ...editorial, goodwill: parseInt(e.target.value) || 0 })}
+                        value={editorial.contingency}
+                        onChange={e => setEditorial({ ...editorial, contingency: parseInt(e.target.value) || 0 })}
                         className="transition-all duration-200 focus:ring-2 focus:ring-purple-500"
                         min={0}
                         placeholder="0"
@@ -768,21 +1321,64 @@ const ReportTimelineCalculator = () => {
           {expandedSections.design && (
             <CardContent className="p-6">
               <div className="space-y-6">
-                <div className="space-y-2">
-                  <Label className="text-sm font-medium text-slate-700">Number of Pages</Label>
-                  <Input
-                    type="number"
-                    value={design.pages}
-                    onChange={e => setDesign({ ...design, pages: parseInt(e.target.value) || 0 })}
-                    className="transition-all duration-200 focus:ring-2 focus:ring-orange-500 max-w-xs"
-                    min={1}
-                    placeholder="40"
-                  />
-                  <p className="text-xs text-slate-500">Rate: 10 pages/day</p>
-                  <div className="mt-2 p-3 bg-orange-50 rounded-lg">
-                    <p className="text-sm text-orange-800">
-                      <strong>Estimated work days:</strong> {Math.max(1, Math.ceil(design.pages / 10))} days
+                <div className="space-y-4">
+                  <div className="space-y-3">
+                    <Label className="text-sm font-medium text-slate-700">Layout Type</Label>
+                    <div className="flex flex-col gap-3 p-4 bg-slate-50 rounded-lg">
+                      <label className="flex items-center gap-3 cursor-pointer hover:bg-white p-2 rounded transition-colors">
+                        <input
+                          type="radio"
+                          checked={design.layoutType === 'text-based'}
+                          onChange={() => setDesign({ ...design, layoutType: 'text-based' })}
+                          className="w-4 h-4 text-orange-600 focus:ring-2 focus:ring-orange-500"
+                        />
+                        <span className="text-sm text-slate-700">Text Based Layout (10 pages/day)</span>
+                      </label>
+                      <label className="flex items-center gap-3 cursor-pointer hover:bg-white p-2 rounded transition-colors">
+                        <input
+                          type="radio"
+                          checked={design.layoutType === 'heavy-infographics'}
+                          onChange={() => setDesign({ ...design, layoutType: 'heavy-infographics' })}
+                          className="w-4 h-4 text-orange-600 focus:ring-2 focus:ring-orange-500"
+                        />
+                        <span className="text-sm text-slate-700">Heavy Infographics (5 pages/day)</span>
+                      </label>
+                    </div>
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label className="text-sm font-medium text-slate-700">Number of Pages</Label>
+                    <Input
+                      type="number"
+                      value={design.pages}
+                      onChange={e => setDesign({ ...design, pages: parseInt(e.target.value) || 0 })}
+                      className="transition-all duration-200 focus:ring-2 focus:ring-orange-500 max-w-xs"
+                      min={1}
+                      placeholder="40"
+                    />
+                    <p className="text-xs text-slate-500">
+                      Rate: {design.layoutType === 'text-based' ? '10' : '5'} pages/day
                     </p>
+                    <div className="mt-2 p-3 bg-orange-50 rounded-lg">
+                      <p className="text-sm text-orange-800">
+                        <strong>Estimated work days:</strong> {Math.max(1, Math.ceil(design.pages / (design.layoutType === 'text-based' ? 10 : 5)))} days
+                      </p>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="border-t pt-6">
+                  <div className="space-y-2 mb-6">
+                    <Label className="text-sm font-medium text-slate-700">Editorial Proofreading</Label>
+                    <Input
+                      type="number"
+                      value={design.editorialProofreading}
+                      onChange={e => setDesign({ ...design, editorialProofreading: parseInt(e.target.value) || 0 })}
+                      className="transition-all duration-200 focus:ring-2 focus:ring-orange-500 max-w-xs"
+                      min={0}
+                      placeholder="0"
+                    />
+                    <p className="text-xs text-slate-500">Days for editorial proofreading before client reviews</p>
                   </div>
                 </div>
 
@@ -869,11 +1465,11 @@ const ReportTimelineCalculator = () => {
                 <div className="border-t pt-6">
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                     <div className="space-y-2">
-                      <Label className="text-sm font-medium text-slate-700">Goodwill Days</Label>
+                      <Label className="text-sm font-medium text-slate-700">Contingency or Buffer Days</Label>
                       <Input
                         type="number"
-                        value={design.goodwill}
-                        onChange={e => setDesign({ ...design, goodwill: parseInt(e.target.value) || 0 })}
+                        value={design.contingency}
+                        onChange={e => setDesign({ ...design, contingency: parseInt(e.target.value) || 0 })}
                         className="transition-all duration-200 focus:ring-2 focus:ring-orange-500"
                         min={0}
                         placeholder="0"
@@ -1018,6 +1614,13 @@ const ReportTimelineCalculator = () => {
                   <div>Scheduling: <strong>{schedulingMode === 'backward' ? 'Backward' : 'Forward'}</strong></div>
                   <div>Statutory Days: <strong>{statutory}</strong></div>
                   <div>Total Duration: <strong>{timeline.totalDays} days</strong></div>
+                  {excludeDays && excludeStartDate && excludeEndDate && (
+                    <div className="md:col-span-3 text-orange-700">
+                      Excluded Period: <strong>{formatDate(new Date(excludeStartDate))} to {formatDate(new Date(excludeEndDate))}</strong>
+                      {excludeDescription && <span> - {excludeDescription}</span>}
+                      {' '}({calculateExcludedWorkingDays()} working days excluded)
+                    </div>
+                  )}
                   <div className="md:col-span-3">Expected Day of Delivery: <strong>{formatDate(timeline.phases[timeline.phases.length - 1]?.end)}</strong></div>
                 </div>
               </div>
@@ -1043,7 +1646,7 @@ const ReportTimelineCalculator = () => {
                     'Design & Layout': 'Design & Layout',
                     'Web Deliverables': 'Web Deliverables',
                     'Print Production': 'Print Production',
-                    'Global Goodwill Buffer': 'Global Goodwill Buffer',
+                    'Global Contingency or Buffer Days': 'Global Contingency or Buffer Days',
                   };
                   const displayName = phaseMap[phase.name] || phase.name;
 
@@ -1078,13 +1681,13 @@ const ReportTimelineCalculator = () => {
                 <Button onClick={exportToText} variant="outline" className="flex items-center gap-2">
                   <Copy className="w-4 h-4" /> Copy to Clipboard
                 </Button>
-                <Button onClick={() => alert('Integrate jsPDF for PDF export')} variant="outline" className="flex items-center gap-2">
+                <Button onClick={exportToPDF} variant="outline" className="flex items-center gap-2">
                   <Download className="w-4 h-4" /> Export PDF
                 </Button>
-                <Button onClick={() => alert('Integrate SheetJS for Excel export')} variant="outline" className="flex items-center gap-2">
+                <Button onClick={exportToExcel} variant="outline" className="flex items-center gap-2">
                   <Download className="w-4 h-4" /> Export Excel
                 </Button>
-                <Button onClick={() => alert('Implement shareable link generation server-side')} variant="outline" className="flex items-center gap-2">
+                <Button onClick={saveAndGenerateLink} variant="outline" className="flex items-center gap-2">
                   <Save className="w-4 h-4" /> Save / Generate Link
                 </Button>
               </div>
