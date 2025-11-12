@@ -26,9 +26,6 @@ export interface ITimeline extends Document {
     clientReview3: number;
     finalReview: number;
     contingency: number;
-    review1Name: string;
-    review2Name: string;
-    review3Name: string;
     skipReview1: boolean;
     skipReview2: boolean;
     skipReview3: boolean;
@@ -46,15 +43,13 @@ export interface ITimeline extends Document {
   design: {
     pages: number;
     layoutType: string;
+    numberOfDesigners: number;
     editorialProofreading: number;
     review1: number;
     review2: number;
     review3: number;
     contingency: number;
     approval: number;
-    review1Name: string;
-    review2Name: string;
-    review3Name: string;
     skipReview1: boolean;
     skipReview2: boolean;
     skipReview3: boolean;
@@ -104,9 +99,6 @@ const TimelineSchema = new Schema<ITimeline>(
       clientReview3: { type: Number, default: 3 },
       finalReview: { type: Number, default: 2 },
       contingency: { type: Number, default: 0 },
-      review1Name: { type: String, default: 'Content review 1' },
-      review2Name: { type: String, default: 'Content review 2' },
-      review3Name: { type: String, default: 'Content review 3' },
       skipReview1: { type: Boolean, default: false },
       skipReview2: { type: Boolean, default: false },
       skipReview3: { type: Boolean, default: false },
@@ -124,15 +116,13 @@ const TimelineSchema = new Schema<ITimeline>(
     design: {
       pages: { type: Number, default: 40 },
       layoutType: { type: String, default: 'text-based' },
+      numberOfDesigners: { type: Number, default: 1 },
       editorialProofreading: { type: Number, default: 2 },
       review1: { type: Number, default: 4 },
       review2: { type: Number, default: 4 },
       review3: { type: Number, default: 4 },
       contingency: { type: Number, default: 2 },
       approval: { type: Number, default: 2 },
-      review1Name: { type: String, default: 'Client review & amends 1' },
-      review2Name: { type: String, default: 'Client review & amends 2' },
-      review3Name: { type: String, default: 'Client review & amends 3' },
       skipReview1: { type: Boolean, default: false },
       skipReview2: { type: Boolean, default: false },
       skipReview3: { type: Boolean, default: false },

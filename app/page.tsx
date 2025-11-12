@@ -41,10 +41,10 @@ const ReportTimelineCalculator = () => {
 
   // Editorial
   const [editorial, setEditorial] = useState({
-    dataCollection: 5,
-    writing: 10,
-    subEditing: 3,
-    internalProofreading: 2,
+    dataCollection: 40,
+    writing: 40,
+    subEditing: 20,
+    internalProofreading: 5,
     clientReview1: 3,
     clientReview2: 3,
     clientReview3: 3,
@@ -58,10 +58,10 @@ const ReportTimelineCalculator = () => {
   // Creative
   const [creative, setCreative] = useState({
     themeAvailable: false,
-    themeDays: 3,
+    themeDays: 5,
     themeRev1: 3,
     themeRev2: 3,
-    designDuration: 5,
+    designDuration: 9,
     skipRev1: false,
     skipRev2: false,
     finalSubmissionAuto: true
@@ -69,14 +69,14 @@ const ReportTimelineCalculator = () => {
 
   // Publication design & layout
   const [design, setDesign] = useState({
-    pages: 40,
-    layoutType: 'text-based', // 'text-based' or 'heavy-infographics'
+    pages: 250,
+    layoutType: 'heavy-infographics', // 'text-based' or 'heavy-infographics'
     numberOfDesigners: 1,
-    editorialProofreading: 2,
+    editorialProofreading: 7,
     review1: 4,
     review2: 4,
     review3: 4,
-    contingency: 2,
+    contingency: 5,
     approval: 2,
     skipReview1: false,
     skipReview2: false,
@@ -338,7 +338,7 @@ const ReportTimelineCalculator = () => {
       const designEnd = printStart;
       const designStart = addWorkingDays(designEnd, -designDays, false);
 
-      // milestone 50% design delivery computed relative to designStart
+      // milestone for half design delivery computed relative to designStart
       const design50 = addWorkingDays(designStart, Math.ceil(designWorkDays / 2), true);
 
       const creativeEnd = designStart;
@@ -371,8 +371,8 @@ const ReportTimelineCalculator = () => {
         { name: 'Editorial & Content', start: editorialStart, end: editorialEnd, days: editorialDays, reviews: editorialReviews },
         { name: 'Creative Development', start: creativeStart, end: creativeEnd, days: creativeDays, theme: creative.themeAvailable ? 'Theme available' : 'Theme development' },
         { name: 'Design & Layout', start: designStart, end: designEnd, days: designDays, milestones: [
-          { name: '50% Delivery', date: design50 },
-          { name: '100% Delivery', date: designEnd }
+          { name: 'Half Delivery', date: design50 },
+          { name: 'Full Delivery', date: designEnd }
         ]},
       ];
 
@@ -427,8 +427,8 @@ const ReportTimelineCalculator = () => {
         { name: 'Editorial & Content', start: editorialStart, end: editorialEnd, days: editorialDays, reviews: editorialReviewsForward },
         { name: 'Creative Development', start: creativeStart, end: creativeEnd, days: creativeDays, theme: creative.themeAvailable ? 'Theme available' : 'Theme development' },
         { name: 'Design & Layout', start: designStart, end: designEnd, days: designDays, milestones: [
-          { name: '50% Delivery', date: design50 },
-          { name: '100% Delivery', date: designEnd }
+          { name: 'Half Delivery', date: design50 },
+          { name: 'Full Delivery', date: designEnd }
         ]},
       ];
 
@@ -458,7 +458,14 @@ const ReportTimelineCalculator = () => {
         excludeEndDate: excludeEndDate || undefined,
         excludeDescription: excludeDescription || undefined,
         editorial,
-        creative,
+        creative: {
+          conceptualization: creative.designDuration,
+          moodboardProduction: creative.themeDays,
+          creativeReview: creative.themeRev1,
+          clientFeedbackRounds: creative.skipRev2 ? 1 : 2,
+          daysPerRound: creative.themeRev2,
+          finalCreativeApproval: 1
+        },
         design,
         webDevelopment: {
           enabled: webDeliverablesRequired,
@@ -621,6 +628,17 @@ const ReportTimelineCalculator = () => {
     doc.text('Total Duration:', rightCol, yPosition);
     doc.setFont('helvetica', 'normal');
     doc.text(`${timeline.totalDays} working days`, rightCol + 38, yPosition);
+
+    yPosition += 6;
+    doc.setFont('helvetica', 'bold');
+    doc.text('Number of Pages:', leftCol, yPosition);
+    doc.setFont('helvetica', 'normal');
+    doc.text(`${savedData.design.pages} pages`, leftCol + 25, yPosition);
+
+    doc.setFont('helvetica', 'bold');
+    doc.text('Number of Designers:', rightCol, yPosition);
+    doc.setFont('helvetica', 'normal');
+    doc.text(`${savedData.design.numberOfDesigners} designer${savedData.design.numberOfDesigners > 1 ? 's' : ''}`, rightCol + 38, yPosition);
 
     yPosition += 6;
     doc.setFont('helvetica', 'bold');
@@ -789,6 +807,8 @@ const ReportTimelineCalculator = () => {
       ['Generated:', new Date().toLocaleString()],
       ['Scheduling Mode:', savedData.schedulingMethod === 'backward' ? 'Backward (from deadline)' : 'Forward (from start)'],
       ['Layout Type:', savedData.design.layoutType === 'text-based' ? 'Text Based (10 pages/day)' : 'Heavy Infographics (5 pages/day)'],
+      ['Number of Pages:', savedData.design.pages],
+      ['Number of Designers:', `${savedData.design.numberOfDesigners} designer${savedData.design.numberOfDesigners > 1 ? 's' : ''}`],
       ['Total Duration:', `${timeline.totalDays} working days`],
       ['Statutory Days:', savedData.finalDeliveryDays]
     ];
@@ -1321,7 +1341,7 @@ const ReportTimelineCalculator = () => {
                         <p className="text-xs text-slate-500">Days</p>
                       </div>
                       <div className="space-y-2">
-                        <Label className="text-sm font-medium text-slate-700">Theme Revision 1</Label>
+                        <Label className="text-sm font-medium text-slate-700">{clientName || 'Client'} Review 1</Label>
                         <Input
                           type="number"
                           value={creative.themeRev1}
@@ -1333,7 +1353,7 @@ const ReportTimelineCalculator = () => {
                         <p className="text-xs text-slate-500">Days</p>
                       </div>
                       <div className="space-y-2">
-                        <Label className="text-sm font-medium text-slate-700">Theme Revision 2</Label>
+                        <Label className="text-sm font-medium text-slate-700">{clientName || 'Client'} Review 2</Label>
                         <Input
                           type="number"
                           value={creative.themeRev2}
@@ -1367,88 +1387,112 @@ const ReportTimelineCalculator = () => {
           )}
         </Card>
 
-        <Card className="shadow rounded-lg overflow-hidden">
-          <CardHeader className="bg-gradient-to-r from-orange-600 to-orange-700 text-white cursor-pointer p-3" onClick={() => toggleSection('design')}>
-            <CardTitle className="flex items-center justify-between text-base">
+        <Card className="shadow-lg rounded-lg overflow-hidden border-2 border-orange-200">
+          <CardHeader className="bg-gradient-to-r from-orange-600 to-orange-700 text-white cursor-pointer p-4" onClick={() => toggleSection('design')}>
+            <CardTitle className="flex items-center justify-between text-lg font-bold">
               <span>Publication Design & Layout</span>
-              {expandedSections.design ? <ChevronUp /> : <ChevronDown />}
+              {expandedSections.design ? <ChevronUp className="w-5 h-5" /> : <ChevronDown className="w-5 h-5" />}
             </CardTitle>
           </CardHeader>
           {expandedSections.design && (
-            <CardContent className="p-6">
+            <CardContent className="p-6 bg-gradient-to-br from-orange-50 to-slate-50">
               <div className="space-y-6">
-                <div className="space-y-4">
-                  <div className="space-y-3">
-                    <Label className="text-sm font-medium text-slate-700">Layout Type</Label>
-                    <div className="flex flex-col gap-3 p-4 bg-slate-50 rounded-lg">
-                      <label className="flex items-center gap-3 cursor-pointer hover:bg-white p-2 rounded transition-colors">
-                        <input
-                          type="radio"
-                          checked={design.layoutType === 'text-based'}
-                          onChange={() => setDesign({ ...design, layoutType: 'text-based' })}
-                          className="w-4 h-4 text-orange-600 focus:ring-2 focus:ring-orange-500"
-                        />
-                        <span className="text-sm text-slate-700">Text Based Layout (10 pages/day)</span>
-                      </label>
-                      <label className="flex items-center gap-3 cursor-pointer hover:bg-white p-2 rounded transition-colors">
-                        <input
-                          type="radio"
-                          checked={design.layoutType === 'heavy-infographics'}
-                          onChange={() => setDesign({ ...design, layoutType: 'heavy-infographics' })}
-                          className="w-4 h-4 text-orange-600 focus:ring-2 focus:ring-orange-500"
-                        />
-                        <span className="text-sm text-slate-700">Heavy Infographics (5 pages/day)</span>
-                      </label>
+                <div className="bg-white p-5 rounded-lg shadow-sm border border-orange-200">
+                  <h4 className="text-base font-semibold text-orange-800 mb-4 flex items-center gap-2">
+                    <span className="w-1 h-6 bg-orange-600 rounded"></span>
+                    Layout Configuration
+                  </h4>
+                  <div className="space-y-4">
+                    <div className="space-y-3">
+                      <Label className="text-sm font-medium text-slate-700">Layout Type</Label>
+                      <div className="flex flex-col gap-3 p-4 bg-gradient-to-br from-orange-50 to-slate-50 rounded-lg border border-orange-200">
+                        <label className="flex items-center gap-3 cursor-pointer hover:bg-white p-3 rounded transition-all hover:shadow-sm">
+                          <input
+                            type="radio"
+                            checked={design.layoutType === 'text-based'}
+                            onChange={() => setDesign({ ...design, layoutType: 'text-based' })}
+                            className="w-5 h-5 text-orange-600 focus:ring-2 focus:ring-orange-500"
+                          />
+                          <span className="text-sm font-medium text-slate-700">Text Based Layout (10 pages/day)</span>
+                        </label>
+                        <label className="flex items-center gap-3 cursor-pointer hover:bg-white p-3 rounded transition-all hover:shadow-sm">
+                          <input
+                            type="radio"
+                            checked={design.layoutType === 'heavy-infographics'}
+                            onChange={() => setDesign({ ...design, layoutType: 'heavy-infographics' })}
+                            className="w-5 h-5 text-orange-600 focus:ring-2 focus:ring-orange-500"
+                          />
+                          <span className="text-sm font-medium text-slate-700">Heavy Infographics (5 pages/day)</span>
+                        </label>
+                      </div>
                     </div>
-                  </div>
 
-                  <div className="space-y-2">
-                    <Label className="text-sm font-medium text-slate-700">Number of Pages</Label>
-                    <Input
-                      type="number"
-                      value={design.pages}
-                      onChange={e => setDesign({ ...design, pages: parseInt(e.target.value) || 0 })}
-                      className="transition-all duration-200 focus:ring-2 focus:ring-orange-500 max-w-xs"
-                      min={1}
-                      placeholder="40"
-                    />
-                    <p className="text-xs text-slate-500">
-                      Rate: {design.layoutType === 'text-based' ? '10' : '5'} pages/day
-                    </p>
-                    <div className="mt-2 p-3 bg-orange-50 rounded-lg">
-                      <p className="text-sm text-orange-800">
-                        <strong>Estimated work days:</strong> {Math.max(1, Math.ceil(design.pages / (design.layoutType === 'text-based' ? 10 : 5)))} days
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <div className="space-y-2">
+                        <Label className="text-sm font-medium text-slate-700">Number of Pages</Label>
+                        <Input
+                          type="number"
+                          value={design.pages}
+                          onChange={e => setDesign({ ...design, pages: parseInt(e.target.value) || 0 })}
+                          className="transition-all duration-200 focus:ring-2 focus:ring-orange-500"
+                          min={1}
+                          placeholder="250"
+                        />
+                        <p className="text-xs text-slate-500">
+                          Rate: {design.layoutType === 'text-based' ? '10' : '5'} pages/day per designer
+                        </p>
+                      </div>
+
+                      <div className="space-y-2">
+                        <Label className="text-sm font-medium text-slate-700">Number of Designers</Label>
+                        <Input
+                          type="number"
+                          value={design.numberOfDesigners}
+                          onChange={e => setDesign({ ...design, numberOfDesigners: Math.max(1, parseInt(e.target.value) || 1) })}
+                          className="transition-all duration-200 focus:ring-2 focus:ring-orange-500"
+                          min={1}
+                          placeholder="1"
+                        />
+                        <p className="text-xs text-slate-500">
+                          Working on layout: {design.numberOfDesigners} designer{design.numberOfDesigners > 1 ? 's' : ''}
+                        </p>
+                      </div>
+                    </div>
+
+                    <div className="p-4 bg-gradient-to-r from-orange-100 to-orange-50 rounded-lg border-l-4 border-orange-600 shadow-sm">
+                      <p className="text-sm font-semibold text-orange-900">
+                        <strong>Estimated Layout Work Days:</strong> {Math.max(1, Math.ceil(design.pages / ((design.layoutType === 'text-based' ? 10 : 5) * Math.max(1, design.numberOfDesigners))))} days
+                      </p>
+                      <p className="text-xs text-orange-700 mt-1">
+                        Based on {design.pages} pages ÷ ({design.layoutType === 'text-based' ? '10' : '5'} pages/day × {design.numberOfDesigners} designer{design.numberOfDesigners > 1 ? 's' : ''})
                       </p>
                     </div>
                   </div>
                 </div>
 
-                <div className="border-t pt-6">
-                  <div className="space-y-2 mb-6">
-                    <Label className="text-sm font-medium text-slate-700">Editorial Proofreading</Label>
+                <div className="bg-white p-5 rounded-lg shadow-sm border border-orange-200">
+                  <h4 className="text-base font-semibold text-orange-800 mb-4 flex items-center gap-2">
+                    <span className="w-1 h-6 bg-orange-600 rounded"></span>
+                    Editorial Proofreading
+                  </h4>
+                  <div className="space-y-2">
                     <Input
                       type="number"
                       value={design.editorialProofreading}
                       onChange={e => setDesign({ ...design, editorialProofreading: parseInt(e.target.value) || 0 })}
                       className="transition-all duration-200 focus:ring-2 focus:ring-orange-500 max-w-xs"
                       min={0}
-                      placeholder="0"
+                      placeholder="7"
                     />
                     <p className="text-xs text-slate-500">Days for editorial proofreading before client reviews</p>
                   </div>
                 </div>
 
                 <div className="border-t pt-6">
-                  <h4 className="text-sm font-semibold text-slate-700 mb-4">Client Reviews & Amendments</h4>
+                  <h4 className="text-sm font-semibold text-slate-700 mb-4">{clientName || 'Client'} Reviews & Amendments</h4>
                   <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                     <div className="space-y-2">
-                      <Label className="text-sm font-medium text-slate-700">Review 1 Name</Label>
-                      <Input
-                        value={design.review1Name}
-                        onChange={e => setDesign({ ...design, review1Name: e.target.value })}
-                        className="transition-all duration-200 focus:ring-2 focus:ring-orange-500"
-                        placeholder="Review name"
-                      />
+                      <Label className="text-sm font-medium text-slate-700">{clientName || 'Client'} Review 1</Label>
                       <div className="flex items-center gap-3 p-3 bg-slate-50 rounded-lg">
                         <Checkbox
                           checked={design.skipReview1}
@@ -1467,13 +1511,7 @@ const ReportTimelineCalculator = () => {
                     </div>
 
                     <div className="space-y-2">
-                      <Label className="text-sm font-medium text-slate-700">Review 2 Name</Label>
-                      <Input
-                        value={design.review2Name}
-                        onChange={e => setDesign({ ...design, review2Name: e.target.value })}
-                        className="transition-all duration-200 focus:ring-2 focus:ring-orange-500"
-                        placeholder="Review name"
-                      />
+                      <Label className="text-sm font-medium text-slate-700">{clientName || 'Client'} Review 2</Label>
                       <div className="flex items-center gap-3 p-3 bg-slate-50 rounded-lg">
                         <Checkbox
                           checked={design.skipReview2}
@@ -1492,13 +1530,7 @@ const ReportTimelineCalculator = () => {
                     </div>
 
                     <div className="space-y-2">
-                      <Label className="text-sm font-medium text-slate-700">Review 3 Name</Label>
-                      <Input
-                        value={design.review3Name}
-                        onChange={e => setDesign({ ...design, review3Name: e.target.value })}
-                        className="transition-all duration-200 focus:ring-2 focus:ring-orange-500"
-                        placeholder="Review name"
-                      />
+                      <Label className="text-sm font-medium text-slate-700">{clientName || 'Client'} Review 3</Label>
                       <div className="flex items-center gap-3 p-3 bg-slate-50 rounded-lg">
                         <Checkbox
                           checked={design.skipReview3}
@@ -1656,40 +1688,49 @@ const ReportTimelineCalculator = () => {
         </div>
 
         {timeline && (
-          <Card className="shadow border-2 border-blue-200 rounded-lg overflow-hidden">
-            <CardHeader className="bg-gradient-to-r from-blue-600 to-blue-700 text-white p-3">
-              <CardTitle className="text-lg">Project Plan and Deliverables</CardTitle>
+          <Card className="shadow-lg border-2 border-blue-200 rounded-lg overflow-hidden">
+            <CardHeader className="bg-gradient-to-r from-blue-600 to-blue-700 text-white p-4">
+              <CardTitle className="text-xl font-bold flex items-center gap-2">
+                <Calendar className="w-6 h-6" />
+                Project Plan and Deliverables
+              </CardTitle>
             </CardHeader>
-            <CardContent>
-              <div className="mb-6 p-4 bg-blue-50 rounded">
-                <h3 className="font-semibold text-lg mb-3">Project Overview</h3>
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-                  <div>Project Name: <strong>{projectName}</strong></div>
-                  <div>Type: <strong>{reportType}</strong></div>
-                  <div>Generated: <strong>{timestamp ? new Date(timestamp).toLocaleString() : '-'}</strong></div>
-                  <div>Scheduling: <strong>{schedulingMode === 'backward' ? 'Backward' : 'Forward'}</strong></div>
-                  <div>Statutory Days: <strong>{statutory}</strong></div>
-                  <div>Total Duration: <strong>{timeline.totalDays} days</strong></div>
+            <CardContent className="p-6">
+              <div className="mb-6 p-5 bg-gradient-to-br from-blue-50 to-slate-50 rounded-lg border border-blue-100 shadow-sm">
+                <h3 className="font-bold text-xl mb-4 text-slate-800 border-b border-blue-200 pb-2">Project Overview</h3>
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-x-6 gap-y-2 text-sm text-slate-700">
+                  <div>Project Name: {projectName}</div>
+                  <div>Generated: {timestamp ? new Date(timestamp).toLocaleString() : '-'}</div>
+                  {clientName && <div>Client Name: {clientName}</div>}
                   {excludeDays && excludeStartDate && excludeEndDate && (
-                    <div className="md:col-span-3 text-orange-700">
-                      Excluded Period: <strong>{formatDate(new Date(excludeStartDate))} to {formatDate(new Date(excludeEndDate))}</strong>
-                      {excludeDescription && <span> - {excludeDescription}</span>}
-                      {' '}({calculateExcludedWorkingDays()} working days excluded)
+                    <div className="md:col-span-3">
+                      <p className="text-xs italic text-slate-500">
+                        Excluded Period: {formatDate(new Date(excludeStartDate))} to {formatDate(new Date(excludeEndDate))}
+                        {excludeDescription && <span> - {excludeDescription}</span>}
+                        {' '}({calculateExcludedWorkingDays()} working days excluded)
+                      </p>
                     </div>
                   )}
-                  <div className="md:col-span-3">Expected Day of Delivery: <strong>{formatDate(timeline.phases[timeline.phases.length - 1]?.end)}</strong></div>
+                  <div className="md:col-span-3 mt-3 pt-3 border-t border-blue-200">
+                    <div className="flex items-center gap-2 text-lg">
+                      <span className="text-slate-600">Expected Day of Delivery:</span>
+                      <strong className="text-blue-700 text-xl">{formatDate(timeline.phases[timeline.phases.length - 1]?.end)}</strong>
+                    </div>
+                  </div>
                 </div>
               </div>
 
               <div className="space-y-4">
                 {/* Statutory Period displayed first, right below Project Overview */}
                 {timeline.phases.filter(p => p.name === 'Statutory Period').map((phase, idx) => (
-                  <div key={`statutory-${idx}`} className="border-l-4 border-blue-500 pl-4 py-3 bg-slate-50 rounded">
-                    <h4 className="font-semibold">Statutory Days</h4>
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-2 mt-2 text-sm">
-                      <div>Start: <strong>{formatDate(phase.start)}</strong></div>
-                      <div>End: <strong>{formatDate(phase.end)}</strong></div>
-                      <div>Duration: <strong>{phase.days} days</strong></div>
+                  <div key={`statutory-${idx}`} className="border-l-4 border-blue-600 pl-5 py-4 bg-gradient-to-r from-blue-50 to-slate-50 rounded-lg shadow-sm">
+                    <h4 className="font-bold text-base text-slate-800 mb-3">Statutory Days</h4>
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-x-6 gap-y-2 text-sm text-slate-700">
+                      <div>Start: {formatDate(phase.start)}</div>
+                      <div>End: {formatDate(phase.end)}</div>
+                      <div>Duration: {phase.days} days</div>
+                      {holidays && <div>Number of Holidays: {holidays}</div>}
+                      {includeWeekends && <div className="md:col-span-2">Extended Weekends: Yes</div>}
                     </div>
                   </div>
                 ))}
@@ -1706,46 +1747,137 @@ const ReportTimelineCalculator = () => {
                   };
                   const displayName = phaseMap[phase.name] || phase.name;
 
+                  // Determine border color based on phase type
+                  const borderColors: Record<string, string> = {
+                    'Editorial & Content': 'border-purple-600',
+                    'Creative Development': 'border-green-600',
+                    'Design & Layout': 'border-orange-600',
+                    'Web Deliverables': 'border-teal-600',
+                    'Print Production': 'border-red-600',
+                    'Global Contingency or Buffer Days': 'border-yellow-600',
+                  };
+                  const borderColor = borderColors[phase.name] || 'border-blue-600';
+
                   return (
-                    <div key={idx} className="border-l-4 border-blue-500 pl-4 py-3 bg-slate-50 rounded">
-                      <h4 className="font-semibold">{displayName}</h4>
-                      <div className="grid grid-cols-1 md:grid-cols-3 gap-2 mt-2 text-sm">
-                        <div>Start: <strong>{formatDate(phase.start)}</strong></div>
-                        <div>End: <strong>{formatDate(phase.end)}</strong></div>
-                        <div>Duration: <strong>{phase.days} days</strong></div>
+                    <div key={idx} className={`border-l-4 ${borderColor} pl-5 py-4 bg-gradient-to-r from-slate-50 to-white rounded-lg shadow-sm hover:shadow-md transition-shadow`}>
+                      <h4 className="font-bold text-base text-slate-800 mb-3">{displayName}</h4>
+                      <div className="grid grid-cols-1 md:grid-cols-3 gap-x-6 gap-y-2 text-sm text-slate-700 mb-3">
+                        <div>Start: {formatDate(phase.start)}</div>
+                        <div>End: {formatDate(phase.end)}</div>
+                        <div>Duration: {phase.days} days</div>
                       </div>
 
-                      {phase.reviews && (
-                        <div className="mt-2">
-                          {phase.reviews.map((r, i) => <div key={i} className="text-sm">• {r.name}: <strong>{formatDate(r.date)}</strong></div>)}
+                      {/* Editorial & Content Details */}
+                      {phase.name === 'Editorial & Content' && (
+                        <div className="mt-4 p-3 bg-purple-50 rounded-lg border-l-2 border-purple-300">
+                          <div className="grid grid-cols-1 md:grid-cols-3 gap-x-6 gap-y-2 text-sm text-slate-700">
+                            <div>Data Collection: {editorial.dataCollection} days</div>
+                            <div>Writing: {editorial.writing} days</div>
+                            <div>Sub-editing: {editorial.subEditing} days</div>
+                            <div>Internal Proofreading: {editorial.internalProofreading} days</div>
+                            {!editorial.skipReview1 && <div>{clientName || 'Client'} Review 1: {editorial.clientReview1} days</div>}
+                            {!editorial.skipReview2 && <div>{clientName || 'Client'} Review 2: {editorial.clientReview2} days</div>}
+                            {!editorial.skipReview3 && <div>{clientName || 'Client'} Review 3: {editorial.clientReview3} days</div>}
+                            <div>Final Review: {editorial.finalReview} days</div>
+                            {editorial.contingency > 0 && <div>Contingency: {editorial.contingency} days</div>}
+                          </div>
+                        </div>
+                      )}
+
+                      {/* Creative Development Details */}
+                      {phase.name === 'Creative Development' && (
+                        <div className="mt-4 p-3 bg-green-50 rounded-lg border-l-2 border-green-300">
+                          <div className="grid grid-cols-1 md:grid-cols-3 gap-x-6 gap-y-2 text-sm text-slate-700">
+                            {!creative.themeAvailable && <div>Theme Development: {creative.themeDays} days</div>}
+                            {!creative.themeAvailable && !creative.skipRev1 && <div>{clientName || 'Client'} Review 1: {creative.themeRev1} days</div>}
+                            {!creative.themeAvailable && !creative.skipRev2 && <div>{clientName || 'Client'} Review 2: {creative.themeRev2} days</div>}
+                            <div>Creative Conceptualization: {creative.designDuration} days</div>
+                            {creative.themeAvailable && <div className="text-green-700 md:col-span-2">Theme Status: Available</div>}
+                          </div>
+                        </div>
+                      )}
+
+                      {/* Design & Layout Details */}
+                      {phase.name === 'Design & Layout' && (
+                        <div className="mt-4 p-3 bg-orange-50 rounded-lg border-l-2 border-orange-300">
+                          <div className="grid grid-cols-1 md:grid-cols-3 gap-x-6 gap-y-2 text-sm text-slate-700">
+                            <div>Number of Pages: {design.pages}</div>
+                            <div>Layout Type: {design.layoutType === 'text-based' ? 'Text-based (10 pages/day)' : 'Heavy Infographics (5 pages/day)'}</div>
+                            <div>Number of Designers: {design.numberOfDesigners}</div>
+                            <div>Layout Work: {Math.max(1, Math.ceil(design.pages / ((design.layoutType === 'text-based' ? 10 : 5) * Math.max(1, design.numberOfDesigners))))} days</div>
+                            <div>Editorial Proofreading: {design.editorialProofreading} days</div>
+                            {!design.skipReview1 && <div>{clientName || 'Client'} Review 1: {design.review1} days</div>}
+                            {!design.skipReview2 && <div>{clientName || 'Client'} Review 2: {design.review2} days</div>}
+                            {!design.skipReview3 && <div>{clientName || 'Client'} Review 3: {design.review3} days</div>}
+                            {design.contingency > 0 && <div>Contingency: {design.contingency} days</div>}
+                            <div>Final Approval: {design.approval} days</div>
+                          </div>
+                        </div>
+                      )}
+
+                      {/* Web Deliverables Details */}
+                      {phase.name === 'Web Deliverables' && webDeliverablesRequired && (
+                        <div className="mt-4 p-3 bg-teal-50 rounded-lg border-l-2 border-teal-300">
+                          <div className="grid grid-cols-1 md:grid-cols-3 gap-x-6 gap-y-2 text-sm text-slate-700">
+                            <div>UI & UX Development: {webDeliverables.uiuxDays} days</div>
+                            <div>Deployment: {webDeliverables.deploymentDays} days</div>
+                          </div>
+                        </div>
+                      )}
+
+                      {/* Print Production Details */}
+                      {phase.name === 'Print Production' && (
+                        <div className="mt-4 p-3 bg-red-50 rounded-lg border-l-2 border-red-300">
+                          <div className="grid grid-cols-1 md:grid-cols-3 gap-x-6 gap-y-2 text-sm text-slate-700">
+                            <div>Preparation & Submission: {print.preparation} days</div>
+                            <div>Print Delivery: {print.printDeliveryDays} days</div>
+                          </div>
+                        </div>
+                      )}
+
+                      {phase.reviews && phase.reviews.length > 0 && (
+                        <div className="mt-4 p-3 bg-slate-100 rounded-lg border-l-2 border-slate-400">
+                          <div className="font-semibold text-slate-800 mb-2 text-sm">Review Milestones:</div>
+                          <div className="space-y-1">
+                            {phase.reviews.map((r, i) => <div key={i} className="text-sm text-slate-700">• {r.name}: <strong>{formatDate(r.date)}</strong></div>)}
+                          </div>
                         </div>
                       )}
 
                       {phase.milestones && (
-                        <div className="mt-2">
-                          {phase.milestones.map((m, i) => <div key={i} className="text-sm">✓ {m.name}: <strong>{formatDate(m.date)}</strong></div>)}
+                        <div className="mt-4 p-3 bg-blue-50 rounded-lg border-l-2 border-blue-400">
+                          <div className="font-semibold text-slate-800 mb-2 text-sm">Key Milestones:</div>
+                          <div className="space-y-1">
+                            {phase.milestones.map((m, i) => <div key={i} className="text-sm text-slate-700">✓ {m.name}: <strong>{formatDate(m.date)}</strong></div>)}
+                          </div>
                         </div>
                       )}
 
-                      {phase.theme && <div className="mt-2 text-sm">Theme: <strong>{phase.theme}</strong></div>}
+                      {phase.theme && (
+                        <div className="mt-3 p-2 bg-slate-50 rounded text-sm text-slate-700 border-l-2 border-slate-300">
+                          Theme Status: <strong>{phase.theme}</strong>
+                        </div>
+                      )}
                     </div>
                   );
                 })}
               </div>
 
-              <div className="mt-4 flex flex-wrap gap-2 justify-center">
-                <Button onClick={exportToText} variant="outline" className="flex items-center gap-2">
-                  <Copy className="w-4 h-4" /> Copy to Clipboard
-                </Button>
-                <Button onClick={exportToPDF} variant="outline" className="flex items-center gap-2">
-                  <Download className="w-4 h-4" /> Export PDF
-                </Button>
-                <Button onClick={exportToExcel} variant="outline" className="flex items-center gap-2">
-                  <Download className="w-4 h-4" /> Export Excel
-                </Button>
-                <Button onClick={saveAndGenerateLink} variant="outline" className="flex items-center gap-2">
-                  <Save className="w-4 h-4" /> Save / Generate Link
-                </Button>
+              <div className="mt-6 pt-4 border-t border-slate-200">
+                <div className="flex flex-wrap gap-3 justify-center">
+                  <Button onClick={exportToText} variant="outline" className="flex items-center gap-2 hover:bg-slate-100 transition-colors shadow-sm">
+                    <Copy className="w-4 h-4" /> Copy to Clipboard
+                  </Button>
+                  <Button onClick={exportToPDF} variant="outline" className="flex items-center gap-2 hover:bg-red-50 hover:border-red-300 transition-colors shadow-sm">
+                    <Download className="w-4 h-4" /> Export PDF
+                  </Button>
+                  <Button onClick={exportToExcel} variant="outline" className="flex items-center gap-2 hover:bg-green-50 hover:border-green-300 transition-colors shadow-sm">
+                    <Download className="w-4 h-4" /> Export Excel
+                  </Button>
+                  <Button onClick={saveAndGenerateLink} variant="outline" className="flex items-center gap-2 hover:bg-blue-50 hover:border-blue-300 transition-colors shadow-sm">
+                    <Save className="w-4 h-4" /> Save / Generate Link
+                  </Button>
+                </div>
               </div>
             </CardContent>
           </Card>
