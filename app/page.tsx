@@ -581,28 +581,35 @@ const ReportTimelineCalculator = () => {
 
     // Professional Header with gradient effect
     doc.setFillColor(30, 64, 175); // Darker blue
-    doc.rect(0, 0, pageWidth, 25, 'F');
+    doc.rect(0, 0, pageWidth, 30, 'F');
 
     // Add decorative line
     doc.setFillColor(59, 130, 246); // Lighter blue
-    doc.rect(0, 23, pageWidth, 2, 'F');
+    doc.rect(0, 28, pageWidth, 2, 'F');
 
-    // Title
-    doc.setFontSize(14);
+    // Project Name and Client at the top
+    doc.setFontSize(9);
     doc.setFont('helvetica', 'bold');
     doc.setTextColor(255, 255, 255);
-    doc.text('Project Plan and Deliverables', pageWidth / 2, 14, { align: 'center' });
+    let headerY = 8;
+    doc.text(`Project: ${savedData.projectName}`, pageWidth / 2, headerY, { align: 'center' });
 
-    // Subtitle
-    doc.setFontSize(8);
-    doc.setFont('helvetica', 'normal');
-    doc.text(savedData.projectName, pageWidth / 2, 20, { align: 'center' });
+    if (savedData.clientName) {
+      headerY += 4;
+      doc.text(`Client: ${savedData.clientName}`, pageWidth / 2, headerY, { align: 'center' });
+    }
+
+    // Title - "Project Plan and Deliverables"
+    headerY += 5;
+    doc.setFontSize(12);
+    doc.setFont('helvetica', 'bold');
+    doc.text('Project Plan and Deliverables', pageWidth / 2, headerY, { align: 'center' });
 
     // Reset text color
     doc.setTextColor(0, 0, 0);
 
     // Project Overview Section
-    let yPosition = 32;
+    let yPosition = 36;
 
     doc.setFontSize(9);
     doc.setFont('helvetica', 'bold');
