@@ -595,12 +595,12 @@ const ReportTimelineCalculator = () => {
     doc.text(`Project: ${savedData.projectName}`, pageWidth / 2, headerY, { align: 'center' });
 
     if (savedData.clientName) {
-      headerY += 4;
+      headerY += 5;
       doc.text(`Client: ${savedData.clientName}`, pageWidth / 2, headerY, { align: 'center' });
     }
 
     // Title - "Project Plan and Deliverables"
-    headerY += 5;
+    headerY += 6;
     doc.setFontSize(12);
     doc.setFont('helvetica', 'bold');
     doc.text('Project Plan and Deliverables', pageWidth / 2, headerY, { align: 'center' });
@@ -609,14 +609,14 @@ const ReportTimelineCalculator = () => {
     doc.setTextColor(0, 0, 0);
 
     // Project Overview Section
-    let yPosition = 36;
+    let yPosition = 38;
 
     doc.setFontSize(9);
     doc.setFont('helvetica', 'bold');
     doc.setTextColor(30, 64, 175); // Blue color for titles
     doc.text('Project Overview', 14, yPosition);
 
-    yPosition += 4;
+    yPosition += 5;
     doc.setFontSize(7);
     doc.setFont('helvetica', 'normal');
     doc.setTextColor(0, 0, 0); // Black text
@@ -637,18 +637,18 @@ const ReportTimelineCalculator = () => {
     doc.setFont('helvetica', 'normal');
     doc.text(new Date().toLocaleString(), col2 + 18, yPosition);
 
-    yPosition += 3;
+    yPosition += 4;
     if (savedData.clientName) {
       doc.setFont('helvetica', 'bold');
       doc.text('Client Name:', col1, yPosition);
       doc.setFont('helvetica', 'normal');
       doc.text(savedData.clientName, col1 + 22, yPosition);
-      yPosition += 3;
+      yPosition += 4;
     }
 
     // Excluded period if applicable
     if (savedData.excludeDays && savedData.excludeStartDate && savedData.excludeEndDate) {
-      yPosition += 3;
+      yPosition += 4;
       doc.setFontSize(7);
       doc.setFont('helvetica', 'normal');
       doc.setTextColor(0, 0, 0);
@@ -658,11 +658,11 @@ const ReportTimelineCalculator = () => {
       const maxWidth = pageWidth - 28;
       const excludeLines = doc.splitTextToSize(excludeText, maxWidth);
       doc.text(excludeLines, leftMargin, yPosition);
-      yPosition += excludeLines.length * 3;
+      yPosition += excludeLines.length * 3.5;
     }
 
     // Expected Day of Delivery
-    yPosition += 4;
+    yPosition += 5;
     doc.setFont('helvetica', 'bold');
     doc.setFontSize(8);
     doc.setTextColor(30, 64, 175); // Blue color for titles
@@ -672,7 +672,7 @@ const ReportTimelineCalculator = () => {
     doc.setFont('helvetica', 'normal');
     doc.text(formatDate(timeline.phases[timeline.phases.length - 1]?.end), leftMargin + 40, yPosition);
 
-    yPosition += 6;
+    yPosition += 8;
     doc.setFontSize(7);
     doc.setTextColor(0, 0, 0); // Black text
     doc.setFont('helvetica', 'normal');
@@ -691,7 +691,7 @@ const ReportTimelineCalculator = () => {
     const renderPhase = (phase: any, idx: number) => {
       checkAndAddPage(30);
 
-      yPosition += 4;
+      yPosition += 5;
 
       // Phase header
       doc.setFontSize(9);
@@ -699,7 +699,7 @@ const ReportTimelineCalculator = () => {
       doc.setTextColor(30, 64, 175); // Blue color for titles
       doc.text(phase.name, leftMargin, yPosition);
 
-      yPosition += 4;
+      yPosition += 5;
       doc.setFontSize(7);
       doc.setTextColor(0, 0, 0); // Black text
       doc.setFont('helvetica', 'normal');
@@ -720,7 +720,7 @@ const ReportTimelineCalculator = () => {
       doc.setFont('helvetica', 'normal');
       doc.text(`${phase.days} days`, col3 + 15, yPosition);
 
-      yPosition += 3;
+      yPosition += 4;
 
       // Phase-specific details
       if (phase.name === 'Editorial & Content') {
@@ -728,7 +728,7 @@ const ReportTimelineCalculator = () => {
         doc.text(`Data Collection: ${savedData.editorial.dataCollection} days`, col1, yPosition);
         doc.text(`Writing: ${savedData.editorial.writing} days`, col2, yPosition);
         doc.text(`Sub-editing: ${savedData.editorial.subEditing} days`, col3, yPosition);
-        yPosition += 3;
+        yPosition += 3.5;
         doc.text(`Internal Proofreading: ${savedData.editorial.internalProofreading} days`, col1, yPosition);
         if (!savedData.editorial.skipReview1) {
           doc.text(`${savedData.clientName || 'Client'} Review 1: ${savedData.editorial.clientReview1} days`, col2, yPosition);
@@ -736,32 +736,32 @@ const ReportTimelineCalculator = () => {
         if (!savedData.editorial.skipReview2) {
           doc.text(`${savedData.clientName || 'Client'} Review 2: ${savedData.editorial.clientReview2} days`, col3, yPosition);
         }
-        yPosition += 3;
+        yPosition += 3.5;
         if (!savedData.editorial.skipReview3) {
           doc.text(`${savedData.clientName || 'Client'} Review 3: ${savedData.editorial.clientReview3} days`, col1, yPosition);
         }
         doc.text(`Final Review: ${savedData.editorial.finalReview} days`, col2, yPosition);
-        yPosition += 3;
+        yPosition += 3.5;
       } else if (phase.name === 'Creative Development') {
         doc.text(`Theme Development: ${savedData.creative.moodboardProduction} days`, col1, yPosition);
         doc.text(`${savedData.clientName || 'Client'} Review 1: ${savedData.creative.creativeReview} days`, col2, yPosition);
         doc.text(`${savedData.clientName || 'Client'} Review 2: ${savedData.creative.daysPerRound} days`, col3, yPosition);
-        yPosition += 3;
+        yPosition += 3.5;
         doc.text(`Creative Conceptualization: ${savedData.creative.conceptualization} days`, col1, yPosition);
-        yPosition += 3;
+        yPosition += 3.5;
         if (phase.theme) {
           doc.text(`Theme Status: ${phase.theme}`, col1, yPosition);
-          yPosition += 3;
+          yPosition += 3.5;
         }
       } else if (phase.name === 'Design & Layout') {
         doc.text(`Number of Pages: ${savedData.design.pages}`, col1, yPosition);
         doc.text(`Layout Type: ${savedData.design.layoutType === 'text-based' ? 'Text Based' : 'Heavy Infographics'}`, col2, yPosition);
-        yPosition += 3;
+        yPosition += 3.5;
         doc.text(`Number of Designers: ${savedData.design.numberOfDesigners}`, col1, yPosition);
         const layoutDays = Math.max(1, Math.ceil(savedData.design.pages / ((savedData.design.layoutType === 'text-based' ? 10 : 5) * Math.max(1, savedData.design.numberOfDesigners))));
         doc.text(`Layout Work: ${layoutDays} days`, col2, yPosition);
         doc.text(`Editorial Proofreading: ${savedData.design.editorialProofreading} days`, col3, yPosition);
-        yPosition += 3;
+        yPosition += 3.5;
         if (!savedData.design.skipReview1) {
           doc.text(`${savedData.clientName || 'Client'} Review 1: ${savedData.design.review1} days`, col1, yPosition);
         }
@@ -771,53 +771,53 @@ const ReportTimelineCalculator = () => {
         if (!savedData.design.skipReview3) {
           doc.text(`${savedData.clientName || 'Client'} Review 3: ${savedData.design.review3} days`, col3, yPosition);
         }
-        yPosition += 3;
+        yPosition += 3.5;
         if (savedData.design.contingency > 0) {
           doc.text(`Contingency: ${savedData.design.contingency} days`, col1, yPosition);
         }
         doc.text(`Final Approval: ${savedData.design.approval} days`, col2, yPosition);
-        yPosition += 3;
+        yPosition += 3.5;
       } else if (phase.name === 'Web Deliverables' && savedData.webDevelopment.enabled) {
         doc.text(`UI & UX Development: ${savedData.webDevelopment.frontendDevelopment} days`, col1, yPosition);
         doc.text(`Deployment: ${savedData.webDevelopment.testing} days`, col2, yPosition);
-        yPosition += 3;
+        yPosition += 3.5;
       } else if (phase.name === 'Print Production') {
         doc.text(`Preparation & Submission: ${savedData.printProduction.prePressProofing} days`, col1, yPosition);
         doc.text(`Print Delivery: ${savedData.printProduction.printing} days`, col2, yPosition);
-        yPosition += 3;
+        yPosition += 3.5;
       }
 
       // Review Milestones
       if (phase.reviews && phase.reviews.length > 0) {
-        checkAndAddPage(phase.reviews.length * 3 + 5);
+        checkAndAddPage(phase.reviews.length * 3.5 + 6);
         doc.setFontSize(8);
         doc.setFont('helvetica', 'bold');
         doc.setTextColor(30, 64, 175); // Blue color for titles
         doc.text('Review Milestones:', leftMargin, yPosition);
-        yPosition += 3;
+        yPosition += 4;
         doc.setFontSize(7);
         doc.setFont('helvetica', 'normal');
         doc.setTextColor(0, 0, 0); // Black text
         phase.reviews.forEach(review => {
           doc.text(`${review.name}: ${formatDate(review.date)}`, leftMargin, yPosition);
-          yPosition += 3;
+          yPosition += 3.5;
         });
       }
 
       // Key Milestones
       if (phase.milestones && phase.milestones.length > 0) {
-        checkAndAddPage(phase.milestones.length * 3 + 5);
+        checkAndAddPage(phase.milestones.length * 3.5 + 6);
         doc.setFontSize(8);
         doc.setFont('helvetica', 'bold');
         doc.setTextColor(30, 64, 175); // Blue color for titles
         doc.text('Key Milestones:', leftMargin, yPosition);
-        yPosition += 3;
+        yPosition += 4;
         doc.setFontSize(7);
         doc.setFont('helvetica', 'normal');
         doc.setTextColor(0, 0, 0); // Black text
         phase.milestones.forEach(milestone => {
           doc.text(`${milestone.name}: ${formatDate(milestone.date)}`, leftMargin, yPosition);
-          yPosition += 3;
+          yPosition += 3.5;
         });
       }
     };
@@ -941,14 +941,25 @@ const ReportTimelineCalculator = () => {
 
   // Save and Generate Link
   const saveAndGenerateLink = async () => {
-    if (!savedTimelineId) {
+    if (!timeline) {
       alert('Please calculate the timeline first before generating a link.');
       return;
     }
 
-    const url = `${window.location.origin}/?id=${savedTimelineId}`;
-    await navigator.clipboard.writeText(url);
-    alert(`Shareable link copied to clipboard:\n${url}`);
+    try {
+      // Ensure data is saved
+      if (!savedTimelineId) {
+        alert('Please calculate the timeline first to generate a shareable link.');
+        return;
+      }
+
+      const url = `${window.location.origin}/?id=${savedTimelineId}`;
+      await navigator.clipboard.writeText(url);
+      alert(`Shareable link copied to clipboard!\n\n${url}\n\nShare this link to allow others to view your timeline.`);
+    } catch (error) {
+      console.error('Error generating link:', error);
+      alert('Failed to copy link to clipboard. Please try again.');
+    }
   };
 
   const toggleSection = (section) => {
