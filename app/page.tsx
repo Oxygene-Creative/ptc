@@ -64,7 +64,8 @@ const ReportTimelineCalculator = () => {
     designDuration: 9,
     skipRev1: false,
     skipRev2: false,
-    finalSubmissionAuto: true
+    finalSubmissionAuto: true,
+    overlapEditorialCreative: false
   });
 
   // Publication design & layout
@@ -154,7 +155,8 @@ const ReportTimelineCalculator = () => {
               designDuration: data.creative.conceptualization,
               skipRev1: false,
               skipRev2: data.creative.clientFeedbackRounds < 2,
-              finalSubmissionAuto: true
+              finalSubmissionAuto: true,
+              overlapEditorialCreative: data.creative.overlapEditorialCreative || false
             });
             setDesign(data.design);
             setWebDeliverablesRequired(data.webDevelopment.enabled);
@@ -326,7 +328,9 @@ const ReportTimelineCalculator = () => {
     const printDays = print.preparation + print.printDeliveryDays;
 
     // Global contingency applies to entire timeline. We'll add it as buffer before statutory or before final delivery.
-    const totalInternalDays = editorialDays + creativeDays + designDays + webDays + printDays;
+    // If overlap is enabled, Editorial and Creative run in parallel, so we don't add their days together
+    const overlapSavings = creative.overlapEditorialCreative ? Math.min(editorialDays, creativeDays) : 0;
+    const totalInternalDays = editorialDays + creativeDays + designDays + webDays + printDays - overlapSavings;
     const totalDays = totalInternalDays + globalContingency + statutory;
 
     if (totalDays > 365) setWarnings(['Total timeline exceeds 365 days. Consider revising durations']);
@@ -351,11 +355,24 @@ const ReportTimelineCalculator = () => {
       // milestone for half design delivery computed relative to designStart
       const design50 = addWorkingDays(designStart, Math.ceil(designWorkDays / 2), true);
 
-      const creativeEnd = designStart;
-      const creativeStart = addWorkingDays(creativeEnd, -creativeDays, false);
+      let creativeEnd, creativeStart, editorialEnd, editorialStart;
 
-      const editorialEnd = creativeStart;
-      const editorialStart = addWorkingDays(editorialEnd, -editorialDays, false);
+      if (creative.overlapEditorialCreative) {
+        // When overlapping, both phases end at designStart
+        // They start at different times based on their durations
+        creativeEnd = designStart;
+        creativeStart = addWorkingDays(creativeEnd, -creativeDays, false);
+
+        editorialEnd = designStart;
+        editorialStart = addWorkingDays(editorialEnd, -editorialDays, false);
+      } else {
+        // Sequential: Creative ends when Design starts, Editorial ends when Creative starts
+        creativeEnd = designStart;
+        creativeStart = addWorkingDays(creativeEnd, -creativeDays, false);
+
+        editorialEnd = creativeStart;
+        editorialStart = addWorkingDays(editorialEnd, -editorialDays, false);
+      }
 
       // web deliverables placed before print production
       const webEnd = printStart;
@@ -395,15 +412,33 @@ const ReportTimelineCalculator = () => {
     } else {
       // Forward scheduling
       const sDate = new Date(startDate);
-      const editorialStart = sDate;
-      const editorialEnd = addWorkingDays(editorialStart, editorialDays, true);
+      let editorialStart, editorialEnd, creativeStart, creativeEnd, designStart, designEnd, design50;
 
-      const creativeStart = editorialEnd;
-      const creativeEnd = addWorkingDays(creativeStart, creativeDays, true);
+      if (creative.overlapEditorialCreative) {
+        // When overlapping, both phases start at the same time
+        editorialStart = sDate;
+        editorialEnd = addWorkingDays(editorialStart, editorialDays, true);
 
-      const designStart = creativeEnd;
-      const designEnd = addWorkingDays(designStart, designDays, true);
-      const design50 = addWorkingDays(designStart, Math.ceil(designWorkDays / 2), true);
+        creativeStart = sDate;
+        creativeEnd = addWorkingDays(creativeStart, creativeDays, true);
+
+        // Design starts after the later of the two phases ends
+        const laterEnd = (editorialEnd && creativeEnd && editorialEnd > creativeEnd) ? editorialEnd : creativeEnd;
+        designStart = laterEnd;
+        designEnd = addWorkingDays(designStart, designDays, true);
+        design50 = addWorkingDays(designStart, Math.ceil(designWorkDays / 2), true);
+      } else {
+        // Sequential: Editorial, then Creative, then Design
+        editorialStart = sDate;
+        editorialEnd = addWorkingDays(editorialStart, editorialDays, true);
+
+        creativeStart = editorialEnd;
+        creativeEnd = addWorkingDays(creativeStart, creativeDays, true);
+
+        designStart = creativeEnd;
+        designEnd = addWorkingDays(designStart, designDays, true);
+        design50 = addWorkingDays(designStart, Math.ceil(designWorkDays / 2), true);
+      }
 
       const webStart = webDeliverablesRequired ? addWorkingDays(designEnd, 1, true) : null; // put web work after design in forward mode
       const webEnd = webDeliverablesRequired ? addWorkingDays(webStart, webDays, true) : null;
@@ -474,7 +509,8 @@ const ReportTimelineCalculator = () => {
           creativeReview: creative.themeRev1,
           clientFeedbackRounds: creative.skipRev2 ? 1 : 2,
           daysPerRound: creative.themeRev2,
-          finalCreativeApproval: 1
+          finalCreativeApproval: 1,
+          overlapEditorialCreative: creative.overlapEditorialCreative
         },
         design,
         webDevelopment: {
@@ -1386,6 +1422,17 @@ const ReportTimelineCalculator = () => {
                   />
                   <Label className="text-sm text-slate-700 cursor-pointer">
                     Theme available. Proceed to creative conceptualization ({creative.themeDays} days)
+                  </Label>
+                </div>
+
+                <div className="flex items-center gap-3 p-4 bg-green-50 rounded-lg hover:bg-green-100 transition-colors border-2 border-green-200">
+                  <Checkbox
+                    checked={creative.overlapEditorialCreative}
+                    onCheckedChange={(v) => setCreative({ ...creative, overlapEditorialCreative: v })}
+                    className="data-[state=checked]:bg-green-600"
+                  />
+                  <Label className="text-sm font-medium text-green-800 cursor-pointer">
+                    Overlap: Run Editorial & Content Development and Creative Development simultaneously
                   </Label>
                 </div>
 
