@@ -21,8 +21,9 @@ const ReportTimelineCalculator = () => {
   const [schedulingMode, setSchedulingMode] = useState('backward'); // backward default
   const [finalDate, setFinalDate] = useState('');
   const [startDate, setStartDate] = useState('');
+  const [dateError, setDateError] = useState(''); // ✅ inline date error
   const [includeWeekends, setIncludeWeekends] = useState(false); // default exclude weekends
-  const [holidays, setHolidays] = useState('');
+  const [holidayList, setHolidayList] = useState<string[]>([]); // ✅ array of date picker values
   const [statutory, setStatutory] = useState(0);
   const [globalContingency, setGlobalContingency] = useState(0);
   const [excludeDays, setExcludeDays] = useState(false);
@@ -140,9 +141,9 @@ const ReportTimelineCalculator = () => {
             setSchedulingMode(data.schedulingMethod);
             setStartDate(data.startDate ? new Date(data.startDate).toISOString().split('T')[0] : '');
             setFinalDate(data.endDate ? new Date(data.endDate).toISOString().split('T')[0] : '');
-            setHolidays(data.numberOfHolidays ? data.numberOfHolidays.toString() : '');
+            setHolidayList(Array.isArray(data.holidayDates) ? data.holidayDates : []); // ✅ load as array
             setIncludeWeekends(data.useExtendedWeekends);
-            setStatutory(data.finalDeliveryDays);
+            setStatutory(0); // ✅ finalDeliveryDate is now a Date, not days
             setGlobalContingency(data.globalContingency || 0);
             setExcludeDays(data.excludeDays || false);
             setExcludeStartDate(data.excludeStartDate || '');
@@ -192,12 +193,40 @@ const ReportTimelineCalculator = () => {
     loadTimeline();
   }, []);
 
+  // ✅ NEW: Regex for strict YYYY-MM-DD validation
+  const DATE_REGEX = /^\d{4}-(0[1-9]|1[0-2])-(0[1-9]|[12]\d|3[01])$/;
+
+  // ✅ NEW: Validates each comma-separated holiday entry and sets error state
+  const validateHolidayDates = (value: string): boolean => {
+    const entries = value.split(',').map(h => h.trim()).filter(h => h);
+    const invalid = entries.filter(h => !DATE_REGEX.test(h));
+    if (invalid.length > 0) {
+      setHolidayError(`Invalid date(s): ${invalid.join(', ')} — must be YYYY-MM-DD (e.g. 2025-12-25)`);
+      return false;
+    }
+    setHolidayError('');
+    return true;
+  };
+
+  // ✅ Inline date validator — runs as user picks a date
+  const validateDateInline = (value: string) => {
+    if (!value) { setDateError(''); return; }
+    const chosen = new Date(value);
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    if (chosen < today) {
+      const label = schedulingMode === 'backward' ? 'Final delivery date' : 'Project start date';
+      setDateError(
+        `${label} (${chosen.toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })}) is in the past — please choose a future date.`
+      );
+    } else {
+      setDateError('');
+    }
+  };
+
   // Helper: parse holiday list
   const parseHolidayList = () => {
-    return holidays.split(',')
-      .map(h => h.trim())
-      .filter(h => h)
-      .map(h => h); // expect YYYY-MM-DD strings
+    return holidayList.filter(h => h && DATE_REGEX.test(h));
   };
 
   // Add or subtract working days
@@ -277,6 +306,23 @@ const ReportTimelineCalculator = () => {
     if (!reportType) errs.push('Select report type');
     if (schedulingMode === 'backward' && !finalDate) errs.push('Final delivery date is required');
     if (schedulingMode === 'forward' && !startDate) errs.push('Project start date is required');
+
+    // ✅ Block calculation if the key date is in the past
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    if (schedulingMode === 'backward' && finalDate) {
+      const chosen = new Date(finalDate);
+      if (chosen < today) {
+        errs.push(`Final delivery date (${chosen.toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })}) is in the past — the timeline is not feasible. Please choose a future date.`);
+      }
+    }
+    if (schedulingMode === 'forward' && startDate) {
+      const chosen = new Date(startDate);
+      if (chosen < today) {
+        errs.push(`Project start date (${chosen.toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })}) is in the past — the timeline is not feasible. Please choose a future date.`);
+      }
+    }
+
     if (design.pages < 1) errs.push('Number of pages must be at least 1');
     // numeric limits
     const numericFields = [
@@ -289,6 +335,7 @@ const ReportTimelineCalculator = () => {
       if (f.val < 0) errs.push(`${f.name} must be zero or positive`);
       if (f.val > 365) errs.push(`${f.name} is too large`);
     });
+    // holiday validation now handled by date pickers — no manual check needed
     return errs;
   };
 
@@ -441,6 +488,19 @@ const ReportTimelineCalculator = () => {
         editorialReviews.push({ name: `${displayClientName} Review 3`, date: addWorkingDays(editorialStart, cumulativeDays, true) });
       }
 
+      // ✅ Check: if the required start date is in the past, the timeline is not feasible
+      const todayCheck = new Date();
+      todayCheck.setHours(0, 0, 0, 0);
+      if (editorialStart && editorialStart < todayCheck) {
+        setWarnings([
+          `The total workflow days (${totalInternalDays} days) exceed your delivery window. ` +
+          `The project would need to start on ${new Date(editorialStart).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })}, ` +
+          `which is in the past. Please either extend the final delivery date or reduce the number of working days.`
+        ]);
+        setTimeline(null);
+        return;
+      }
+
       phases = [
         { name: 'Editorial & Content', start: editorialStart, end: editorialEnd, days: editorialDays, reviews: editorialReviews },
         { name: 'Creative Theme Development', start: creativeStart, end: creativeEnd, days: creativeDays, theme: creative.themeAvailable ? 'Theme available' : 'Theme development', reviews: creativeReviews },
@@ -570,12 +630,12 @@ const ReportTimelineCalculator = () => {
       const data = {
         projectName,
         clientName: clientName || reportType,
-        schedulingMethod: schedulingMode,
+        schedulingMethod: schedulingMode === 'backward' ? 'Backward Scheduling' : 'Forward Scheduling', // ✅ updated labels
         startDate: startDate || undefined,
         endDate: finalDate || undefined,
-        numberOfHolidays: parseInt(holidays) || 0,
+        holidayDates: holidayList.filter(h => h && DATE_REGEX.test(h)), // ✅ from date picker array
         useExtendedWeekends: includeWeekends,
-        finalDeliveryDays: statutory,
+        finalDeliveryDate: finalDate || startDate || undefined, // ✅ Date not days
         globalContingency,
         excludeDays,
         excludeStartDate: excludeStartDate || undefined,
@@ -983,7 +1043,7 @@ const ReportTimelineCalculator = () => {
       ['Number of Pages:', savedData.design.pages],
       ['Number of Designers:', `${savedData.design.numberOfDesigners} designer${savedData.design.numberOfDesigners > 1 ? 's' : ''}`],
       ['Total Duration:', `${timeline.totalDays} working days`],
-      ['Statutory Days:', savedData.finalDeliveryDays]
+      ['Final Delivery Date:', savedData.finalDeliveryDate ? new Date(savedData.finalDeliveryDate).toLocaleDateString() : '-']
     ];
 
     // Add excluded period info if applicable
@@ -1187,11 +1247,21 @@ const ReportTimelineCalculator = () => {
                       {schedulingMode === 'backward' ? 'Final Delivery Date' : 'Project Start Date'} <span className="text-red-500">*</span>
                     </Label>
                     <Input
-                      className={`transition-all duration-200 ${requiredClass(schedulingMode === 'backward' ? finalDate : startDate)} focus:ring-2 focus:ring-blue-500`}
+                      className={`transition-all duration-200 ${dateError ? 'border-red-500 focus:ring-red-500' : requiredClass(schedulingMode === 'backward' ? finalDate : startDate)} focus:ring-2 focus:ring-blue-500`}
                       type="date"
                       value={schedulingMode === 'backward' ? finalDate : startDate}
-                      onChange={e => schedulingMode === 'backward' ? setFinalDate(e.target.value) : setStartDate(e.target.value)}
+                      onChange={e => {
+                        const val = e.target.value;
+                        schedulingMode === 'backward' ? setFinalDate(val) : setStartDate(val);
+                        validateDateInline(val);
+                      }}
                     />
+                    {dateError && (
+                      <p className="text-xs text-red-600 font-medium flex items-start gap-1 mt-1">
+                        <AlertCircle className="w-3 h-3 mt-0.5 shrink-0" />
+                        {dateError}
+                      </p>
+                    )}
                   </div>
                 </div>
               </div>
@@ -1214,15 +1284,39 @@ const ReportTimelineCalculator = () => {
                     </div>
                   </div>
 
-                  <div className="space-y-2">
-                    <Label className="text-sm font-medium text-slate-700">Holidays (YYYY-MM-DD)</Label>
-                    <Input
-                      className="transition-all duration-200 focus:ring-2 focus:ring-blue-500"
-                      value={holidays}
-                      onChange={e => setHolidays(e.target.value)}
-                      placeholder="2025-12-25,2025-12-26"
-                    />
-                    <p className="text-xs text-slate-500">Comma separated</p>
+                  {/* ✅ Holidays — individual date pickers */}
+                  <div className="space-y-2 md:col-span-2">
+                    <Label className="text-sm font-medium text-slate-700">Public Holidays</Label>
+                    <div className="space-y-2">
+                      {holidayList.map((h, i) => (
+                        <div key={i} className="flex items-center gap-2">
+                          <Input
+                            type="date"
+                            value={h}
+                            onChange={e => {
+                              const updated = [...holidayList];
+                              updated[i] = e.target.value;
+                              setHolidayList(updated);
+                            }}
+                            className="transition-all duration-200 focus:ring-2 focus:ring-blue-500 max-w-xs"
+                          />
+                          <button
+                            type="button"
+                            onClick={() => setHolidayList(holidayList.filter((_, idx) => idx !== i))}
+                            className="text-red-500 hover:text-red-700 text-lg font-bold leading-none px-1 transition-colors"
+                            title="Remove"
+                          >×</button>
+                        </div>
+                      ))}
+                      <button
+                        type="button"
+                        onClick={() => setHolidayList([...holidayList, ''])}
+                        className="text-sm text-blue-600 hover:text-blue-800 font-medium flex items-center gap-1 transition-colors"
+                      >
+                        + Add Holiday
+                      </button>
+                    </div>
+                    <p className="text-xs text-slate-500">Add each public holiday using the date picker</p>
                   </div>
 
                   <div className="space-y-2">
@@ -1317,15 +1411,6 @@ const ReportTimelineCalculator = () => {
             </div>
           </CardContent>
         </Card>
-
-        {warnings.length > 0 && (
-          <Alert className="border-red-500 bg-red-50">
-            <AlertCircle className="h-4 w-4 text-red-600" />
-            <AlertDescription className="text-red-800">
-              {warnings.map((w, i) => <div key={i}>• {w}</div>)}
-            </AlertDescription>
-          </Alert>
-        )}
 
         <Card className="shadow rounded-lg overflow-hidden">
           <CardHeader className="bg-gradient-to-r from-purple-600 to-purple-700 text-white cursor-pointer p-3" onClick={() => toggleSection('editorial')}>
@@ -1916,8 +2001,24 @@ const ReportTimelineCalculator = () => {
           )}
         </Card>
 
-        <div className="flex justify-center gap-4">
-          <Button onClick={calculateTimeline} className="bg-blue-600 hover:bg-blue-700 text-white px-6 py-3">
+        <div className="flex flex-col items-center gap-3">
+          {warnings.length > 0 && (
+            <div className="w-full max-w-2xl bg-red-50 border border-red-400 rounded-lg shadow-lg px-5 py-4 animate-pulse-once">
+              <div className="flex items-start gap-2">
+                <AlertCircle className="h-5 w-5 text-red-600 mt-0.5 shrink-0" />
+                <div>
+                  <p className="text-sm font-semibold text-red-700 mb-1">Please fix the following before continuing:</p>
+                  {warnings.map((w, i) => (
+                    <div key={i} className="text-sm text-red-700">• {w}</div>
+                  ))}
+                </div>
+              </div>
+            </div>
+          )}
+          <Button
+            onClick={calculateTimeline}
+            className="bg-blue-600 hover:bg-blue-700 active:bg-blue-900 active:scale-95 text-white px-8 py-4 text-base font-semibold rounded-lg shadow-lg hover:shadow-xl active:shadow-inner transition-all duration-150 cursor-pointer select-none"
+          >
             <Clock className="w-5 h-5 mr-2" />
             Calculate Timeline
           </Button>
@@ -1965,7 +2066,7 @@ const ReportTimelineCalculator = () => {
                       <div>Start: {formatDate(phase.start)}</div>
                       <div>End: {formatDate(phase.end)}</div>
                       <div>Duration: {phase.days} days</div>
-                      {holidays && <div>Number of Holidays: {holidays}</div>}
+                      {holidayList.filter(h => h).length > 0 && <div>Holidays: {holidayList.filter(h => h).length} day{holidayList.filter(h => h).length > 1 ? 's' : ''}</div>}
                       {includeWeekends && <div className="md:col-span-2">Extended Weekends: Yes</div>}
                     </div>
                   </div>

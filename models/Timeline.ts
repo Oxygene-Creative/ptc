@@ -4,12 +4,12 @@ export interface ITimeline extends Document {
   uniqueId: string;
   projectName: string;
   clientName: string;
-  schedulingMethod: 'backward' | 'forward';
+  schedulingMethod: 'Backward Scheduling' | 'Forward Scheduling'; // ✅ Fix 1: updated enum labels
   startDate?: Date;
   endDate?: Date;
-  numberOfHolidays: number;
+  holidayDates: string[];           // ✅ Fix 2: was numberOfHolidays: number
   useExtendedWeekends: boolean;
-  finalDeliveryDays: number;
+  finalDeliveryDate?: Date;         // ✅ Fix 3: was finalDeliveryDays: number
   globalContingency: number;
   excludeDays: boolean;
   excludeStartDate?: string;
@@ -77,12 +77,33 @@ const TimelineSchema = new Schema<ITimeline>(
     uniqueId: { type: String, required: true, unique: true, index: true },
     projectName: { type: String, required: true },
     clientName: { type: String, required: true },
-    schedulingMethod: { type: String, enum: ['backward', 'forward'], required: true },
+
+    // ✅ Fix 1: Full label strings instead of shorthand
+    schedulingMethod: {
+      type: String,
+      enum: ['Backward Scheduling', 'Forward Scheduling'],
+      required: true,
+    },
+
     startDate: { type: Date },
     endDate: { type: Date },
-    numberOfHolidays: { type: Number, default: 0 },
+
+    // ✅ Fix 2: Array of YYYY-MM-DD strings with regex validation
+    holidayDates: {
+      type: [String],
+      default: [],
+      validate: {
+        validator: (dates: string[]) =>
+          dates.every((d) => /^\d{4}-(0[1-9]|1[0-2])-(0[1-9]|[12]\d|3[01])$/.test(d)),
+        message: 'Each holiday must be in YYYY-MM-DD format (e.g. 2025-12-25)',
+      },
+    },
+
     useExtendedWeekends: { type: Boolean, default: false },
-    finalDeliveryDays: { type: Number, default: 0 },
+
+    // ✅ Fix 3: Actual delivery date instead of a number of days
+    finalDeliveryDate: { type: Date },
+
     globalContingency: { type: Number, default: 0 },
     excludeDays: { type: Boolean, default: false },
     excludeStartDate: { type: String },
